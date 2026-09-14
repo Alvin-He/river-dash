@@ -5,5 +5,5 @@
 *Please add your name in the format of `Name<Email>`* 
 
 # Contributors
-Alvin-He<zhongjihe.alvin@gmail.com>
+Alvin-He<zhongjihe.alvin@gmail.com>    
 Angel-Palacios<angelpalacios2283@gmail.com>
