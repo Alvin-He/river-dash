@@ -1,0 +1,27 @@
+#! /bin/bash
+
+# This script automatically runs pre-commit tasks
+#   then commits your code using `git commit`
+# Usage: ./commit <git commit options>
+
+set -e
+
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname -- "${SCRIPT_PATH}")"
+
+cd "${SCRIPT_DIR}"
+
+echo "Running Pre-Commit tasks:"
+
+echo "Format Frontend"
+cd "${SCRIPT_DIR}/frontend"
+npm run format
+
+
+echo "Format Backend"
+cd "${SCRIPT_DIR}/backend"
+cargo fmt
+cargo check
+
+echo "Committing"
+git commit "$@"

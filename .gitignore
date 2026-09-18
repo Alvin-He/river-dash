@@ -1,0 +1,10 @@
+# General Files
+*.lock
+
+# NODE/REACT/VITE/WEB
+node_modules
+package-lock.json
+
+# RUST/CARGO/BACKEND
+backend/target
+

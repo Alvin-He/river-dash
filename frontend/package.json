@@ -1,0 +1,24 @@
+{
+	"name": "river-dash",
+	"version": "1.0.0",
+	"description": "Simple, extendable, Web Dashboard and Control Console",
+	"license": "AGPL",
+	"author": "River Dash Contributors",
+	"type": "commonjs",
+	"main": "index.js",
+	"scripts": {
+		"format": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"workspaces": [
+		"packages/*"
+	],
+	"devDependencies": {
+		"@eslint/compat": "^2.1.1",
+		"@eslint/eslintrc": "^3.3.7",
+		"@eslint/js": "^10.0.1",
+		"eslint": "^10.10.0",
+		"globals": "^17.12.0",
+		"prettier": "^3.9.6"
+	}
+}

@@ -1,0 +1,5 @@
+max_width = 100 # recommended 80
+hard_tabs = true
+newline_style = "Unix"
+
+
