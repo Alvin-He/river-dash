@@ -10,3 +10,4 @@ _Please add your name in the format of `Name<Email>    `_
 Alvin-He<zhongjihe.alvin@gmail.com>  
 Angel-Palacios<angelpalacios2283@gmail.com>  
 Tate-Criqui<tatecriqui@gmail.com>
+Emilia-Vu<evu21@calpoly.edu>
