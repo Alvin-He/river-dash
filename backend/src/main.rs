@@ -11,7 +11,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
  
-
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct Component {
     id : String,
 	isReadable: bool,
@@ -21,7 +21,7 @@ struct Component {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct Configuration {
     name: String,
-    components: list[Component]
+    components: Vec<Component>
 }
 
 /*
