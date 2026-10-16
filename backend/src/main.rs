@@ -10,12 +10,13 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+mod sql;
  
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct Component {
     id : String,
-	isReadable: bool,
-    isCommandable: bool
+	is_readable: bool,
+    is_commandable: bool
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
