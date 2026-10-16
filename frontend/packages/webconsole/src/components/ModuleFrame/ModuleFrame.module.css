@@ -1,0 +1,75 @@
+.module {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	overflow: hidden;
+	background: var(--color-panel);
+	border: 1px solid var(--color-border);
+	border-radius: 5px;
+	color: var(--color-text-primary);
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	height: 30px;
+	flex: 0 0 auto;
+	padding: 0 8px;
+	background: var(--color-raised);
+	border-bottom: 1px solid var(--color-border);
+	cursor: grab;
+	user-select: none;
+}
+
+.header:active {
+	cursor: grabbing;
+}
+
+.header h2 {
+	margin: 0;
+	font-size: 0.75rem;
+	font-weight: 500;
+}
+
+.grip {
+	color: var(--color-text-muted);
+	font-size: 0.875rem;
+}
+
+.status {
+	margin-left: auto;
+	font: 0.625rem monospace;
+	text-transform: uppercase;
+}
+
+.live {
+	color: var(--color-success);
+}
+
+.idle {
+	color: var(--color-text-muted);
+}
+
+.warning {
+	color: var(--color-caution);
+}
+
+.error {
+	color: var(--color-error);
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.content {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+	padding: 8px;
+}

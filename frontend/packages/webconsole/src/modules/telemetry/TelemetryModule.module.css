@@ -1,0 +1,138 @@
+.telemetry {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+}
+
+.summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 26px;
+	margin-bottom: 8px;
+	padding: 0 7px;
+	background: var(--color-sidebar);
+	border: 1px solid var(--color-border);
+	color: var(--color-text-muted);
+	font: 0.58rem monospace;
+	letter-spacing: 0.03em;
+}
+
+.summary span {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.summary i {
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: var(--color-success);
+	box-shadow: 0 0 6px var(--color-success);
+}
+
+.summary strong {
+	color: var(--color-text-secondary);
+	font: inherit;
+}
+
+.table {
+	display: block;
+	flex: 1 1 0;
+	min-height: 0;
+	overflow-x: hidden;
+	overflow-y: auto;
+	scrollbar-gutter: stable;
+	border: 1px solid var(--color-border);
+	font: 0.62rem monospace;
+}
+
+.row {
+	display: grid;
+	grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.95fr) minmax(0, 0.5fr);
+	align-items: center;
+	min-width: 0;
+	min-height: 29px;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.row:last-child {
+	border-bottom: 0;
+}
+
+.row > span {
+	min-width: 0;
+	padding: 0 7px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.tableHead {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	min-height: 24px;
+	background: var(--color-raised);
+	color: var(--color-text-muted);
+	font: 0.56rem monospace;
+	letter-spacing: 0.03em;
+}
+
+.tableHead > span {
+	padding-top: 2px;
+	text-align: left;
+}
+
+.channel {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--color-text-secondary);
+}
+
+.value {
+	color: var(--color-text-primary);
+}
+
+.indicator {
+	width: 5px;
+	height: 5px;
+	flex: 0 0 auto;
+	border-radius: 50%;
+	background: var(--color-text-muted);
+	box-shadow: 0 0 6px currentColor;
+}
+
+.nominal {
+	color: var(--color-success);
+	background: var(--color-success);
+}
+
+.stale {
+	color: var(--color-caution);
+	background: var(--color-caution);
+}
+
+.warning {
+	color: var(--color-error);
+	background: var(--color-error);
+}
+
+.footer {
+	flex: 0 0 auto;
+	margin: 8px 0 0;
+	overflow: hidden;
+	color: var(--color-text-muted);
+	font: 0.56rem monospace;
+	letter-spacing: 0.03em;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.footer span {
+	color: var(--color-success);
+}

@@ -1,14 +1,20 @@
 # Modules
 
-This is a directory containing each individual UI Module on the River Dash frontend.
+This directory contains domain-specific dashboard modules. Each module gets its
+own folder and should compose reusable components from `../components` rather
+than duplicating shared layout or styling.
 
-To add a UI Module, add a folder to this directory and name it to your UI Module.
-Then update this README to add documentation for that UI Module and what it does.
+## Items
 
-UI Modules should be for that UI Module specifically, if the UI Module is intended
-to be imported by other UI Modules or components, consider putting them into
-[components](../components/)
+- `telemetry/TelemetryModule.tsx` — alphabetized raw telemetry display with
+  values and time since the latest update. It exposes a `TelemetryReading`
+  type so stream data can replace its sample data directly.
+- `placeholder/PlaceholderModule.tsx` — temporary content used for modules
+  that have not yet been implemented.
 
-# Items
+## Adding a module
 
-hello world -- This is an example module. This does not exist nor work.
+1. Create a folder named for the feature, such as `valve-control/`.
+2. Render the feature content inside `ModuleFrame` from `components/ModuleFrame`.
+3. Register it in the freeform dashboard canvas in `App.tsx`.
+4. Add a short description here.

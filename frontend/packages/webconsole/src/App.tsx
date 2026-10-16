@@ -1,121 +1,130 @@
 import { useState } from "react";
-import heroImg from "./assets/hero.png";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "./assets/vite.svg";
+import { FloatingModule, type ModulePosition } from "./components/FloatingModule";
+import {
+	createInitialLayout,
+	findMoveGuide,
+	resizeWithNeighbors,
+	resolveModulePosition,
+	type SnapTarget,
+} from "./layout/dashboardLayout";
+import { PlaceholderModule } from "./modules/placeholder";
+import { demoTelemetryStream, TelemetryModule } from "./modules/telemetry";
 import "./App.css";
 
 function App() {
-	const [count, setCount] = useState(0);
+	const [positions, setPositions] = useState(createInitialLayout);
+	const [isLocked, setIsLocked] = useState(false);
+	const [snapTarget, setSnapTarget] = useState<SnapTarget | null>(null);
+
+	const updatePosition = (moduleId: string) => (requested: ModulePosition) => {
+		setSnapTarget(null);
+		setPositions((current) => resolveModulePosition(moduleId, requested, current));
+	};
+
+	const updateResize = (moduleId: string) => (
+		requested: ModulePosition,
+		direction: string,
+	) => {
+		setPositions((current) =>
+			resizeWithNeighbors(moduleId, requested, direction, current),
+		);
+	};
+
+	const previewMove = (moduleId: string) => (requested: ModulePosition) => {
+		setSnapTarget(findMoveGuide(moduleId, requested, positions));
+	};
+
+	const clearSnapTarget = () => setSnapTarget(null);
 
 	return (
-		<>
-			<section id="center">
-				<div className="hero">
-					<img src={heroImg} className="base" width="170" height="179" alt="" />
-					<img src={reactLogo} className="framework" alt="React logo" />
-					<img src={viteLogo} className="vite" alt="Vite logo" />
-				</div>
-				<div>
-					<h1>Get started</h1>
-					<p>
-						Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-					</p>
+		<main className="console">
+			<header className="topbar">
+				<div className="brand">
+					<span>N</span>
+					<b>NILE CONSOLE</b>
+					<small>TS-01 / SOUTH PAD</small>
 				</div>
 				<button
-					type="button"
-					className="counter"
-					onClick={() => setCount((count) => count + 1)}
+					className="layout-lock"
+					onClick={() => setIsLocked((locked) => !locked)}
 				>
-					Count is {count}
+					{isLocked ? "Edit layout" : "Lock layout"}
 				</button>
-			</section>
+				<p className="connection">● LIVE · 24.8 Hz</p>
+			</header>
 
-			<div className="ticks"></div>
+			<section className="dashboard-canvas" aria-label="Movable dashboard modules">
+				<div className="module-surface">
+					<FloatingModule
+						position={positions.pressure}
+						isLocked={isLocked}
+						onPositionChange={updatePosition("pressure")}
+						onResize={updateResize("pressure")}
+						onDragPreview={previewMove("pressure")}
+						onDragEnd={clearSnapTarget}
+					>
+						<PlaceholderModule
+							title="Propellant pressures"
+							isGuided={snapTarget?.moduleId === "pressure"}
+						/>
+					</FloatingModule>
 
-			<section id="next-steps">
-				<div id="docs">
-					<svg className="icon" role="presentation" aria-hidden="true">
-						<use href="/icons.svg#documentation-icon"></use>
-					</svg>
-					<h2>Documentation</h2>
-					<p>Your questions, answered</p>
-					<ul>
-						<li>
-							<a href="https://vite.dev/" target="_blank">
-								<img className="logo" src={viteLogo} alt="" />
-								Explore Vite
-							</a>
-						</li>
-						<li>
-							<a href="https://react.dev/" target="_blank">
-								<img className="button-icon" src={reactLogo} alt="" />
-								Learn more
-							</a>
-						</li>
-					</ul>
-				</div>
-				<div id="social">
-					<svg className="icon" role="presentation" aria-hidden="true">
-						<use href="/icons.svg#social-icon"></use>
-					</svg>
-					<h2>Connect with us</h2>
-					<p>Join the Vite community</p>
-					<ul>
-						<li>
-							<a href="https://github.com/vitejs/vite" target="_blank">
-								<svg
-									className="button-icon"
-									role="presentation"
-									aria-hidden="true"
-								>
-									<use href="/icons.svg#github-icon"></use>
-								</svg>
-								GitHub
-							</a>
-						</li>
-						<li>
-							<a href="https://chat.vite.dev/" target="_blank">
-								<svg
-									className="button-icon"
-									role="presentation"
-									aria-hidden="true"
-								>
-									<use href="/icons.svg#discord-icon"></use>
-								</svg>
-								Discord
-							</a>
-						</li>
-						<li>
-							<a href="https://x.com/vite_js" target="_blank">
-								<svg
-									className="button-icon"
-									role="presentation"
-									aria-hidden="true"
-								>
-									<use href="/icons.svg#x-icon"></use>
-								</svg>
-								X.com
-							</a>
-						</li>
-						<li>
-							<a href="https://bsky.app/profile/vite.dev" target="_blank">
-								<svg
-									className="button-icon"
-									role="presentation"
-									aria-hidden="true"
-								>
-									<use href="/icons.svg#bluesky-icon"></use>
-								</svg>
-								Bluesky
-							</a>
-						</li>
-					</ul>
+					<FloatingModule
+						position={positions.telemetry}
+						minHeight={190}
+						isLocked={isLocked}
+						onPositionChange={updatePosition("telemetry")}
+						onResize={updateResize("telemetry")}
+						onDragPreview={previewMove("telemetry")}
+						onDragEnd={clearSnapTarget}
+					>
+						<TelemetryModule
+							stream={demoTelemetryStream}
+							isGuided={snapTarget?.moduleId === "telemetry"}
+						/>
+					</FloatingModule>
+
+					<FloatingModule
+						position={positions.pid}
+						isLocked={isLocked}
+						onPositionChange={updatePosition("pid")}
+						onResize={updateResize("pid")}
+						onDragPreview={previewMove("pid")}
+						onDragEnd={clearSnapTarget}
+					>
+						<PlaceholderModule title="P&ID" isGuided={snapTarget?.moduleId === "pid"} />
+					</FloatingModule>
+
+					<FloatingModule
+						position={positions.controls}
+						isLocked={isLocked}
+						onPositionChange={updatePosition("controls")}
+						onResize={updateResize("controls")}
+						onDragPreview={previewMove("controls")}
+						onDragEnd={clearSnapTarget}
+					>
+						<PlaceholderModule
+							title="Mode & Valve Control"
+							isGuided={snapTarget?.moduleId === "controls"}
+						/>
+					</FloatingModule>
+
+					<FloatingModule
+						position={positions.events}
+						isLocked={isLocked}
+						onPositionChange={updatePosition("events")}
+						onResize={updateResize("events")}
+						onDragPreview={previewMove("events")}
+						onDragEnd={clearSnapTarget}
+					>
+						<PlaceholderModule
+							title="Operator event log"
+							isGuided={snapTarget?.moduleId === "events"}
+						/>
+					</FloatingModule>
 				</div>
 			</section>
-
-			<div className="ticks"></div>
-			<section id="spacer"></section>
-		</>
+		</main>
 	);
 }
 
