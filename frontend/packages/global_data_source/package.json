@@ -8,6 +8,7 @@
 		".": "./dist/global_data_table.js",
 		"./global_data_table": "./dist/global_data_table.js",
 		"./types": "./dist/types.js",
+		"./topic": "./dist/topic.js",
 		"./network_stream": "./dist/network_stream.js",
 		"./network_serialize": "./dist/network_serialize.js"
 	},
