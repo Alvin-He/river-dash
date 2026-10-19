@@ -10,21 +10,20 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use sqlx::SqlitePool;
+
 mod sql;
  
-#[derive(Debug, Deserialize, Serialize, Clone)]
-struct Component {
-    id : String,
-	is_readable: bool,
-    is_commandable: bool
+ #[derive(Clone)]
+struct AppState {
+    db: SqlitePool,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-struct Configuration {
-    name: String,
-    components: Vec<Component>
+#[derive(Debug, Serialize, FromRow)]
+pub struct Config {
+    pub id: String,
+    pub components: String
 }
-
 /*
 	Data stream API
 */
@@ -34,14 +33,23 @@ struct Configuration {
 async fn main() {
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
-        .route("/configs/:id", get(getConfig));
+        .route("/configs/:id", get(get_config))
+        .route("/configs", get(get_configs));
+    
+    let pool = db::connect()
+        .await.expect("database connection failed");
  
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
+        .await.unwrap();
+    
     println!("Listening on http://localhost:3000");
     axum::serve(listener, app).await.unwrap();
 }
 
 
-async fn getConfig() {
+async fn get_configs() {
+    
+}
+async fn get_config() {
     
 }
