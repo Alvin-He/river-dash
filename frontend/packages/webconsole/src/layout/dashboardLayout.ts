@@ -20,6 +20,7 @@ const initialPositions: DashboardLayout = {
 	pid: { x: 356, y: 356, width: 350, height: 250 },
 	controls: { x: 722, y: 0, width: 350, height: 410 },
 	events: { x: 722, y: 426, width: 350, height: 220 },
+	graphs: { x: 1088, y: 0, width: 560, height: 420 },
 };
 
 export function createInitialLayout(): DashboardLayout {

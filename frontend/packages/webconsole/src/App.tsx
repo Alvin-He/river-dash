@@ -9,6 +9,7 @@ import {
 } from "./layout/dashboardLayout";
 import { PlaceholderModule } from "./modules/placeholder";
 import { demoTelemetryStream, TelemetryModule } from "./modules/telemetry";
+import { TimeSeriesGraphModule } from "./modules/time-series-graph";
 import "./App.css";
 
 function App() {
@@ -120,6 +121,20 @@ function App() {
 						<PlaceholderModule
 							title="Operator event log"
 							isGuided={snapTarget?.moduleId === "events"}
+						/>
+					</FloatingModule>
+
+					<FloatingModule
+						position={positions.graphs}
+						minHeight={280}
+						isLocked={isLocked}
+						onPositionChange={updatePosition("graphs")}
+						onResize={updateResize("graphs")}
+						onDragPreview={previewMove("graphs")}
+						onDragEnd={clearSnapTarget}
+					>
+						<TimeSeriesGraphModule
+							isGuided={snapTarget?.moduleId === "graphs"}
 						/>
 					</FloatingModule>
 				</div>

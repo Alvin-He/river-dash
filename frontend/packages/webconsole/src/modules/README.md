@@ -11,6 +11,9 @@ than duplicating shared layout or styling.
   type so stream data can replace its sample data directly.
 - `placeholder/PlaceholderModule.tsx` — temporary content used for modules
   that have not yet been implemented.
+- `time-series-graph/TimeSeriesGraphModule.tsx` — one SVG time-series plot
+  that supports up to eight styled measurements, a typed stream adapter, and
+  a 60-second demo source.
 
 ## Adding a module
 

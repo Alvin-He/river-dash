@@ -6,7 +6,6 @@ export interface TelemetryReading {
 	name: string;
 	value: string;
 	age: string;
-	status: "nominal" | "stale" | "warning";
 }
 
 /** Adapter shape for the eventual NILE Stand stream client. */
@@ -15,22 +14,20 @@ export interface TelemetryStream {
 }
 
 const defaultReadings: TelemetryReading[] = [
-	{ name: "fuel_pressure", value: "391.2 psi", age: "8 ms", status: "nominal" },
-	{ name: "fuel_tank_mass", value: "284.1 kg", age: "11 ms", status: "nominal" },
-	{ name: "ox_pressure", value: "428.6 psi", age: "6 ms", status: "nominal" },
-	{ name: "ox_tank_mass", value: "612.8 kg", age: "14 ms", status: "nominal" },
-	{ name: "stand_load", value: "302.4 kg", age: "17 ms", status: "nominal" },
+	{ name: "fuel_pressure", value: "391.2 psi", age: "8 ms" },
+	{ name: "fuel_tank_mass", value: "284.1 kg", age: "11 ms" },
+	{ name: "ox_pressure", value: "428.6 psi", age: "6 ms" },
+	{ name: "ox_tank_mass", value: "612.8 kg", age: "14 ms" },
+	{ name: "stand_load", value: "302.4 kg", age: "17 ms" },
 	{
 		name: "thrust_chamber_temp",
 		value: "24.8 °C",
 		age: "9 ms",
-		status: "nominal",
 	},
 	{
 		name: "vent_line_pressure",
 		value: "14.7 psi",
 		age: "13 ms",
-		status: "nominal",
 	},
 ];
 
@@ -87,23 +84,17 @@ export function TelemetryModule({
 	const sortedReadings = [...activeReadings].sort((first, second) =>
 		first.name.localeCompare(second.name),
 	);
-	const attentionCount = sortedReadings.filter(
-		(reading) => reading.status !== "nominal",
-	).length;
-	const statusLabel = attentionCount ? `${attentionCount} attention` : "Live";
 
 	return (
 		<ModuleFrame
 			title="Telemetry overview"
-			status={attentionCount ? "warning" : "live"}
-			statusLabel={statusLabel}
+			status="live"
+			statusLabel="Live"
 			className={isGuided ? "snap-target" : ""}
 		>
 			<div className={styles.telemetry}>
 				<div className={styles.summary}>
-					<span>
-						<i /> STAND / TELEMETRY
-					</span>
+					<span>STAND / TELEMETRY</span>
 					<strong>{sortedReadings.length} CHANNELS</strong>
 				</div>
 
@@ -117,7 +108,6 @@ export function TelemetryModule({
 					{sortedReadings.map((reading) => (
 						<div className={styles.row} role="row" key={reading.name}>
 							<span className={styles.channel} role="cell">
-								<i className={`${styles.indicator} ${styles[reading.status]}`} />
 								{reading.name}
 							</span>
 							<span className={styles.value} role="cell">
@@ -128,9 +118,7 @@ export function TelemetryModule({
 					))}
 				</div>
 
-				<p className={styles.footer}>
-					<span>●</span> Incoming values are ordered by declaration name
-				</p>
+				<p className={styles.footer}>Incoming values are ordered by declaration name</p>
 			</div>
 		</ModuleFrame>
 	);

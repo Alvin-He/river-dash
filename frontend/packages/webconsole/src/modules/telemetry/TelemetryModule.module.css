@@ -10,6 +10,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	width: 100%;
 	min-height: 26px;
 	margin-bottom: 8px;
 	padding: 0 7px;
@@ -20,20 +21,6 @@
 	letter-spacing: 0.03em;
 }
 
-.summary span {
-	display: flex;
-	align-items: center;
-	gap: 5px;
-}
-
-.summary i {
-	width: 5px;
-	height: 5px;
-	border-radius: 50%;
-	background: var(--color-success);
-	box-shadow: 0 0 6px var(--color-success);
-}
-
 .summary strong {
 	color: var(--color-text-secondary);
 	font: inherit;
@@ -42,10 +29,10 @@
 .table {
 	display: block;
 	flex: 1 1 0;
+	width: 100%;
 	min-height: 0;
 	overflow-x: hidden;
 	overflow-y: auto;
-	scrollbar-gutter: stable;
 	border: 1px solid var(--color-border);
 	font: 0.62rem monospace;
 }
@@ -67,6 +54,7 @@
 	min-width: 0;
 	padding: 0 7px;
 	overflow: hidden;
+	text-align: left;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
@@ -88,38 +76,11 @@
 }
 
 .channel {
-	display: flex;
-	align-items: center;
-	gap: 6px;
 	color: var(--color-text-secondary);
 }
 
 .value {
 	color: var(--color-text-primary);
-}
-
-.indicator {
-	width: 5px;
-	height: 5px;
-	flex: 0 0 auto;
-	border-radius: 50%;
-	background: var(--color-text-muted);
-	box-shadow: 0 0 6px currentColor;
-}
-
-.nominal {
-	color: var(--color-success);
-	background: var(--color-success);
-}
-
-.stale {
-	color: var(--color-caution);
-	background: var(--color-caution);
-}
-
-.warning {
-	color: var(--color-error);
-	background: var(--color-error);
 }
 
 .footer {
@@ -133,6 +94,3 @@
 	white-space: nowrap;
 }
 
-.footer span {
-	color: var(--color-success);
-}
