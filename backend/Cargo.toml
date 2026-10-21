@@ -7,3 +7,6 @@ edition = "2024"
 axum = "0.8"
 serde = { version = "1.0.229", features = ["derive"] }
 tokio = { version = "1.53.1", features = ["full"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite", "macros", "time"] }
+anyhow = "1.0"   # For clean error propagation
+dotenvy = "0.15" # For loading .env variables
