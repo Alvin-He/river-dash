@@ -8,8 +8,9 @@ use axum::{
     extract::{Path, State},
     routing::{get, post},
     Json, Router,
+    http::StatusCode,
 };
-use serde::{Deserialize, Serialize};
+
 use sqlx::SqlitePool;
 
 mod sql;
@@ -19,11 +20,6 @@ struct AppState {
     db: SqlitePool,
 }
 
-#[derive(Debug, Serialize, FromRow)]
-pub struct Config {
-    pub id: String,
-    pub components: String
-}
 /*
 	Data stream API
 */
@@ -31,25 +27,43 @@ pub struct Config {
 
 #[tokio::main]
 async fn main() {
+    let pool = sql::connect()
+        .await.expect("database connection failed");
+
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
-        .route("/configs/:id", get(get_config))
-        .route("/configs", get(get_configs));
+        .route("/configs/{name}", get(get_config))
+        .route("/configs", get(get_configs))
+        .with_state( AppState { db : pool} );
     
-    let pool = db::connect()
-        .await.expect("database connection failed");
  
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await.unwrap();
-    
+
     println!("Listening on http://localhost:3000");
     axum::serve(listener, app).await.unwrap();
 }
 
 
-async fn get_configs() {
-    
+async fn get_configs(State(state): State<AppState>) -> Result<Json<Vec<sql::Config>>, StatusCode> {
+    return sql::get_all_configs(&state.db)
+        .await
+        .map(Json)
+        .map_err(|e| {
+            eprintln!("get_configs has failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        });
 }
-async fn get_config() {
-    
+async fn get_config(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+)-> Result<Json<sql::Config>, StatusCode> {
+    match sql::get_config(&state.db, name).await {
+        Ok(Some(config)) => Ok(Json(config)),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            eprintln!("get_config has failed: {e}");
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }

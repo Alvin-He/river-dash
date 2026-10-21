@@ -8,19 +8,32 @@ use sqlx::{
 
 #[derive(Debug, Serialize, FromRow)]
 pub struct Config {
-    pub id: String,
+    pub name: String,
     pub components: String
 }
 
 // Initial connection, call from main
 pub async fn connect() -> Result<SqlitePool, sqlx::Error> {
+    std::fs::create_dir_all("database").ok();
+
     let options = SqliteConnectOptions::from_str("sqlite:database/configurations.db")?
         .create_if_missing(true);
 
-    SqlitePoolOptions::new()
+    let pool = SqlitePoolOptions::new()
         .max_connections(5)
         .connect_with(options)
-        .await
+        .await?;
+
+      sqlx::query(
+      "CREATE TABLE IF NOT EXISTS configs (
+          name TEXT PRIMARY KEY,
+          components TEXT NOT NULL
+            )",
+        )
+        .execute(&pool)
+        .await?;
+
+    Ok(pool)
 }
 
 pub async fn get_all_configs(pool: &SqlitePool) -> Result<Vec<Config>, sqlx::Error> {
@@ -36,7 +49,7 @@ pub async fn get_config(
     name: String,
 ) -> Result<Option<Config>, sqlx::Error> {
     sqlx::query_as::<_, Config>(
-        "SELECT id, name, email FROM users WHERE name = ?",
+        "SELECT name, components FROM configs WHERE name = ?",
     )
     .bind(name)
     .fetch_optional(pool)
