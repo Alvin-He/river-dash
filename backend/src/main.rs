@@ -32,8 +32,8 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
-        .route("/configs/{name}", get(get_config))
-        .route("/configs", get(get_configs))
+        .route("/configs", get(get_configs).post(post_config))
+        .route("/configs/{name}", get(get_config).delete(delete_config))
         .with_state( AppState { db : pool} );
     
  
@@ -64,6 +64,33 @@ async fn get_config(
         Err(e) => {
             eprintln!("get_config has failed: {e}");
             Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+async fn post_config(
+    State(state): State<AppState>,
+    Json(config): Json<sql::Config>,
+) -> Result<Json<sql::Config>, StatusCode> {
+    sql::upsert_config(&state.db, &config)
+        .await
+        .map(|_| Json(config))
+        .map_err(|e| {
+            eprintln!("post_config has failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
+}
+
+async fn delete_config(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> StatusCode {
+    match sql::delete_config(&state.db, &name).await {
+        Ok(true) => StatusCode::NO_CONTENT,
+        Ok(false) => StatusCode::NOT_FOUND,
+        Err(e) => {
+            eprintln!("delete_config has failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
         }
     }
 }

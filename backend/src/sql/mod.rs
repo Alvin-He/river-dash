@@ -6,7 +6,7 @@ use sqlx::{
     FromRow, SqlitePool,
 };
 
-#[derive(Debug, Serialize, FromRow)]
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct Config {
     pub name: String,
     pub components: String
@@ -36,6 +36,7 @@ pub async fn connect() -> Result<SqlitePool, sqlx::Error> {
     Ok(pool)
 }
 
+// get all
 pub async fn get_all_configs(pool: &SqlitePool) -> Result<Vec<Config>, sqlx::Error> {
     sqlx::query_as::<_, Config>(
         "SELECT name, components FROM configs",
@@ -44,6 +45,7 @@ pub async fn get_all_configs(pool: &SqlitePool) -> Result<Vec<Config>, sqlx::Err
     .await
 }
 
+// get one (names should be unique)
 pub async fn get_config(
     pool: &SqlitePool,
     name: String,
@@ -54,4 +56,26 @@ pub async fn get_config(
     .bind(name)
     .fetch_optional(pool)
     .await
+}
+
+// update (or insert if new)
+pub async fn upsert_config(pool: &SqlitePool, config: &Config) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO configs (name, components) VALUES (?, ?)
+         ON CONFLICT(name) DO UPDATE SET components = excluded.components",
+    )
+    .bind(&config.name)
+    .bind(&config.components)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+// removal
+pub async fn delete_config(pool: &SqlitePool, name: &str) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query("DELETE FROM configs WHERE name = ?")
+        .bind(name)
+        .execute(pool)
+        .await?;
+    Ok(result.rows_affected() > 0)
 }
