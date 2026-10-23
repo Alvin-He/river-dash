@@ -2,13 +2,13 @@ import { ModuleFrame } from "../../components/ModuleFrame";
 
 interface PlaceholderModuleProps {
 	title: string;
-	isGuided?: boolean;
+	isAffected?: boolean;
 }
 
 /** Temporary module content used until each dashboard feature is implemented. */
-export function PlaceholderModule({ title, isGuided = false }: PlaceholderModuleProps) {
+export function PlaceholderModule({ title, isAffected = false }: PlaceholderModuleProps) {
 	return (
-		<ModuleFrame title={title} className={isGuided ? "snap-target" : ""}>
+		<ModuleFrame title={title} className={isAffected ? "affected-module" : ""}>
 			<div className="placeholder">Placeholder module</div>
 		</ModuleFrame>
 	);

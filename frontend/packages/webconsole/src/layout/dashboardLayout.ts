@@ -2,9 +2,12 @@ import type { ModulePosition } from "../components/FloatingModule";
 
 const MODULE_GAP = 16;
 const SNAP_DISTANCE = 32;
+const HEADER_SNAP_DISTANCE = 32;
+const TOP_ALIGN_DISTANCE = 12;
 const EDGE_ALIGN_DISTANCE = 64;
 const MIN_WIDTH = 260;
 const MIN_HEIGHT = 150;
+const MIN_HEIGHT_BY_MODULE: Record<string, number> = { telemetry: 190, graphs: 280 };
 const SURFACE_WIDTH = 1888;
 const SURFACE_HEIGHT = 999;
 
@@ -59,21 +62,74 @@ export function resizeWithNeighbors(
 	current: DashboardLayout,
 ): DashboardLayout {
 	const active = current[moduleId];
-	const next = { ...current, [moduleId]: clampToSurface(requested) };
+	if (!active) return current;
+	const side = direction.toLowerCase();
+	if ((side.includes("left") || side.includes("right")) &&
+		(side.includes("top") || side.includes("bottom"))) {
+		const horizontal = resizeWithNeighbors(moduleId, requested, side.includes("left") ? "left" : "right", current);
+		return resizeWithNeighbors(moduleId, requested, side.includes("top") ? "top" : "bottom", horizontal);
+	}
+	const target = clampResizeRequest(requested, active, direction, moduleId);
+	const result = attemptResize(moduleId, target, direction, current);
+	if (matchesPosition(result[moduleId], target)) return result;
+
+	// A blocked resize should stop at its last valid dimension, not jump back.
+	let low = 0;
+	let high = 1;
+	let best = current;
+	for (let step = 0; step < 16; step++) {
+		const fraction = (low + high) / 2;
+		const candidate = clampResizeRequest({
+			...requested,
+			width: Math.round(active.width + (target.width - active.width) * fraction),
+			height: Math.round(active.height + (target.height - active.height) * fraction),
+		}, active, direction, moduleId);
+		const resized = attemptResize(moduleId, candidate, direction, current);
+		if (matchesPosition(resized[moduleId], candidate)) {
+			best = resized;
+			low = fraction;
+		} else {
+			high = fraction;
+		}
+	}
+	return best;
+}
+
+function matchesPosition(first: ModulePosition, second: ModulePosition): boolean {
+	return (
+		Math.abs(first.x - second.x) < 0.001 &&
+		Math.abs(first.y - second.y) < 0.001 &&
+		Math.abs(first.width - second.width) < 0.001 &&
+		Math.abs(first.height - second.height) < 0.001
+	);
+}
+
+function attemptResize(
+	moduleId: string,
+	requested: ModulePosition,
+	direction: string,
+	current: DashboardLayout,
+): DashboardLayout {
+	const active = current[moduleId];
+	const next = { ...current, [moduleId]: clampToSurface(requested, moduleId) };
 	const normalizedDirection = direction.toLowerCase();
 	let allowed = true;
 
-	if (normalizedDirection.includes("right")) {
+	if (normalizedDirection.includes("right") && next[moduleId].width > active.width) {
 		allowed &&= resizeHorizontally(next, moduleId, active, next[moduleId], current, "right");
 	}
-	if (normalizedDirection.includes("left")) {
+	if (normalizedDirection.includes("left") && next[moduleId].x < active.x) {
 		allowed &&= resizeHorizontally(next, moduleId, active, next[moduleId], current, "left");
 	}
-	if (normalizedDirection.includes("bottom")) {
-		allowed &&= resizeVertically(next, moduleId, active, next[moduleId], current, "bottom");
+	if (normalizedDirection.includes("bottom") && next[moduleId].height > active.height) {
+		allowed &&= resizeVertically(
+			next, moduleId, { ...active, width: next[moduleId].width }, next[moduleId], current, "bottom",
+		);
 	}
-	if (normalizedDirection.includes("top")) {
-		allowed &&= resizeVertically(next, moduleId, active, next[moduleId], current, "top");
+	if (normalizedDirection.includes("top") && next[moduleId].y < active.y) {
+		allowed &&= resizeVertically(
+			next, moduleId, { ...active, width: next[moduleId].width }, next[moduleId], current, "top",
+		);
 	}
 
 	return allowed && layoutIsValid(next) ? next : current;
@@ -84,45 +140,8 @@ export function findMoveGuide(
 	position: ModulePosition,
 	modules: DashboardLayout,
 ): SnapTarget | null {
-	const candidates: Array<SnapTarget & { distance: number }> = [];
-
-	for (const [otherId, other] of Object.entries(modules)) {
-		if (otherId === moduleId) continue;
-
-		if (overlapsWithGap(position, other)) {
-			candidates.push({ moduleId: otherId, distance: 0 });
-		}
-
-		const placements = sidePlacementOptions(position, other);
-		const alignedPlacements = placements.slice(0, 4);
-		const freeAxisPlacements = placements.slice(4);
-		const verticallyAdjacent = sharesVerticalSpace(position, other);
-		const horizontallyAdjacent = sharesHorizontalSpace(position, other);
-
-		for (const candidate of alignedPlacements) {
-			const distance = distanceFrom(position, candidate);
-			if (distance <= SNAP_DISTANCE) {
-				candidates.push({ moduleId: otherId, distance });
-			}
-		}
-
-		for (const candidate of freeAxisPlacements.slice(0, 2)) {
-			const distance = Math.abs(position.x - candidate.x);
-			if (verticallyAdjacent && distance <= SNAP_DISTANCE) {
-				candidates.push({ moduleId: otherId, distance });
-			}
-		}
-
-		for (const candidate of freeAxisPlacements.slice(2)) {
-			const distance = Math.abs(position.y - candidate.y);
-			if (horizontallyAdjacent && distance <= SNAP_DISTANCE) {
-				candidates.push({ moduleId: otherId, distance });
-			}
-		}
-	}
-
-	const nearest = candidates.sort((first, second) => first.distance - second.distance)[0];
-	return nearest ? { moduleId: nearest.moduleId } : null;
+	const [anchor] = getSnapResult(moduleId, clampToSurface(position), modules).anchors;
+	return anchor ? { moduleId: anchor } : null;
 }
 
 function getMovementDirection(
@@ -241,7 +260,7 @@ function resizeHorizontally(
 					};
 	}
 
-	if (neighbors.every(([neighborId]) => tryPush(pushed, neighborId, side))) {
+	if (neighbors.every(([neighborId]) => tryPush(pushed, neighborId, side, moduleId))) {
 		Object.assign(next, pushed);
 	} else {
 		applySharedResize(activeWidth);
@@ -262,15 +281,15 @@ function resizeVertically(
 
 	const maximumSharedHeight = Math.min(
 		...neighbors.map(
-			([, neighbor]) =>
+			([neighborId, neighbor]) =>
 				(side === "bottom"
 					? neighbor.y + neighbor.height - active.y
 					: active.y + active.height - neighbor.y) -
 				MODULE_GAP -
-				MIN_HEIGHT,
+				minHeightFor(neighborId),
 		),
 	);
-	const activeHeight = clamp(requested.height, MIN_HEIGHT, maximumSharedHeight);
+	const activeHeight = clamp(requested.height, minHeightFor(moduleId), maximumSharedHeight);
 
 	const applySharedResize = (height: number) => {
 		const activeY = side === "bottom" ? active.y : active.y + active.height - height;
@@ -308,16 +327,16 @@ function resizeVertically(
 				? {
 						...neighbor,
 						y: pushed[moduleId].y + requested.height + MODULE_GAP,
-						height: MIN_HEIGHT,
+						height: minHeightFor(neighborId),
 					}
 				: {
 						...neighbor,
-						y: pushed[moduleId].y - MODULE_GAP - MIN_HEIGHT,
-						height: MIN_HEIGHT,
+						y: pushed[moduleId].y - MODULE_GAP - minHeightFor(neighborId),
+						height: minHeightFor(neighborId),
 					};
 	}
 
-	if (neighbors.every(([neighborId]) => tryPush(pushed, neighborId, side))) {
+	if (neighbors.every(([neighborId]) => tryPush(pushed, neighborId, side, moduleId))) {
 		Object.assign(next, pushed);
 	} else {
 		applySharedResize(activeHeight);
@@ -329,18 +348,28 @@ function tryPush(
 	modules: DashboardLayout,
 	sourceId: string,
 	direction: "left" | "right" | "top" | "bottom",
+	fixedId?: string,
 ): boolean {
 	const snapshot = { ...modules };
 	const pending = [sourceId];
-	const moved = new Set<string>();
+	let steps = 0;
+	const maximumSteps = Object.keys(modules).length ** 2;
 
 	while (pending.length) {
+		if (steps++ >= maximumSteps) {
+			Object.assign(modules, snapshot);
+			return false;
+		}
 		const currentId = pending.shift()!;
 		const source = modules[currentId];
 
 		for (const [otherId, other] of Object.entries(modules)) {
-			if (otherId === currentId || moved.has(otherId) || !overlapsWithGap(source, other)) {
+			if (otherId === currentId || !overlapsWithGap(source, other)) {
 				continue;
+			}
+			if (otherId === fixedId) {
+				Object.assign(modules, snapshot);
+				return false;
 			}
 
 			modules[otherId] = movePast(source, other, direction);
@@ -349,7 +378,6 @@ function tryPush(
 				return false;
 			}
 
-			moved.add(otherId);
 			pending.push(otherId);
 		}
 	}
@@ -397,67 +425,93 @@ function snapToModules(
 	position: ModulePosition,
 	modules: DashboardLayout,
 ): ModulePosition {
-	const candidates: Array<{ position: ModulePosition; score: number }> = [];
+	return getSnapResult(moduleId, position, modules).position;
+}
+
+function getSnapResult(
+	moduleId: string,
+	position: ModulePosition,
+	modules: DashboardLayout,
+): { position: ModulePosition; anchors: string[] } {
+	const candidates: Array<{
+		moduleId: string;
+		position: ModulePosition;
+		score: number;
+	}> = [];
+	const add = (id: string, candidate: ModulePosition, score: number) => {
+		if (insideSurface(candidate)) {
+			candidates.push({ moduleId: id, position: candidate, score });
+		}
+	};
 
 	for (const [otherId, other] of Object.entries(modules)) {
 		if (otherId === moduleId) continue;
 
 		const placements = sidePlacementOptions(position, other);
-		const [leftAligned, rightAligned, topAligned, bottomAligned, leftFree, rightFree, topFree, bottomFree] = placements;
-
+		const [
+			leftAligned, rightAligned, topAligned, bottomAligned,
+			leftFree, rightFree, topFree, bottomFree,
+		] = placements;
 		for (const candidate of [leftAligned, rightAligned]) {
-			if (Math.abs(position.x - candidate.x) <= SNAP_DISTANCE) {
-				candidates.push({ position: candidate, score: distanceFrom(position, candidate) });
+			if (
+				Math.abs(position.x - candidate.x) <= SNAP_DISTANCE &&
+				Math.abs(position.y - candidate.y) <= EDGE_ALIGN_DISTANCE
+			) {
+				add(otherId, candidate, distanceFrom(position, candidate));
 			}
 		}
 		for (const candidate of [topAligned, bottomAligned]) {
-			if (Math.abs(position.y - candidate.y) <= SNAP_DISTANCE) {
-				candidates.push({ position: candidate, score: distanceFrom(position, candidate) });
+			if (
+				Math.abs(position.y - candidate.y) <= SNAP_DISTANCE &&
+				Math.abs(position.x - candidate.x) <= EDGE_ALIGN_DISTANCE
+			) {
+				add(otherId, candidate, distanceFrom(position, candidate));
 			}
 		}
-
-		if (
-			Math.abs(position.y - other.y) > EDGE_ALIGN_DISTANCE &&
-			Math.abs(position.x - leftFree.x) <= SNAP_DISTANCE
-		) {
-			candidates.push({
-				position: leftFree,
-				score: distanceFrom(position, leftFree) + EDGE_ALIGN_DISTANCE,
-			});
+		if (Math.abs(position.y - other.y) > EDGE_ALIGN_DISTANCE) {
+			for (const candidate of [leftFree, rightFree]) {
+				if (Math.abs(position.x - candidate.x) <= SNAP_DISTANCE) {
+					add(otherId, candidate, distanceFrom(position, candidate) + EDGE_ALIGN_DISTANCE);
+				}
+			}
 		}
-		if (
-			Math.abs(position.y - other.y) > EDGE_ALIGN_DISTANCE &&
-			Math.abs(position.x - rightFree.x) <= SNAP_DISTANCE
-		) {
-			candidates.push({
-				position: rightFree,
-				score: distanceFrom(position, rightFree) + EDGE_ALIGN_DISTANCE,
-			});
-		}
-		if (
-			Math.abs(position.x - other.x) > EDGE_ALIGN_DISTANCE &&
-			Math.abs(position.y - topFree.y) <= SNAP_DISTANCE
-		) {
-			candidates.push({
-				position: topFree,
-				score: distanceFrom(position, topFree) + EDGE_ALIGN_DISTANCE,
-			});
-		}
-		if (
-			Math.abs(position.x - other.x) > EDGE_ALIGN_DISTANCE &&
-			Math.abs(position.y - bottomFree.y) <= SNAP_DISTANCE
-		) {
-			candidates.push({
-				position: bottomFree,
-				score: distanceFrom(position, bottomFree) + EDGE_ALIGN_DISTANCE,
-			});
+		if (Math.abs(position.x - other.x) > EDGE_ALIGN_DISTANCE) {
+			for (const candidate of [topFree, bottomFree]) {
+				if (Math.abs(position.y - candidate.y) <= SNAP_DISTANCE) {
+					add(otherId, candidate, distanceFrom(position, candidate) + EDGE_ALIGN_DISTANCE);
+				}
+			}
 		}
 	}
 
-	const best = candidates
-		.filter((candidate) => insideSurface(candidate.position))
-		.sort((first, second) => first.score - second.score)[0];
-	return best?.position ?? position;
+	const best = candidates.sort((a, b) => a.score - b.score)[0];
+	let snapped = best?.position ?? position;
+	const anchors = best ? [best.moduleId] : [];
+	if (position.y <= HEADER_SNAP_DISTANCE) {
+		if (best?.position.x === position.x) anchors.length = 0;
+		return { position: { ...snapped, y: 0 }, anchors };
+	}
+
+	const nearestTop = Object.entries(modules)
+		.filter(
+			([id, other]) =>
+				id !== moduleId &&
+				Math.abs(position.y - other.y) <= TOP_ALIGN_DISTANCE &&
+				(snapped.x + position.width + MODULE_GAP <= other.x ||
+					other.x + other.width + MODULE_GAP <= snapped.x),
+		)
+		.sort(
+			([, a], [, b]) => Math.abs(position.y - a.y) - Math.abs(position.y - b.y),
+		)[0];
+	if (nearestTop) {
+		// A vertical candidate overridden by top alignment is no longer an anchor.
+		if (best && best.position.x === position.x && best.position.y !== position.y) {
+			anchors.length = 0;
+		}
+		snapped = { ...snapped, y: nearestTop[1].y };
+		if (!anchors.includes(nearestTop[0])) anchors.push(nearestTop[0]);
+	}
+	return { position: snapped, anchors };
 }
 
 function sidePlacementOptions(position: ModulePosition, obstacle: ModulePosition): ModulePosition[] {
@@ -493,9 +547,35 @@ function placementScore(
 	return distanceFrom(requested, candidate) + (alignsAnEdge ? 0 : EDGE_ALIGN_DISTANCE);
 }
 
-function clampToSurface(position: ModulePosition): ModulePosition {
+/** Keep the edge opposite the grabbed handle fixed at the canvas boundary. */
+function clampResizeRequest(
+	requested: ModulePosition,
+	active: ModulePosition,
+	direction: string,
+	moduleId: string,
+): ModulePosition {
+	const side = direction.toLowerCase();
+	const left = side.includes("left");
+	const right = side.includes("right");
+	const top = side.includes("top");
+	const bottom = side.includes("bottom");
+	const width = left || right
+		? clamp(requested.width, MIN_WIDTH, left ? active.x + active.width : SURFACE_WIDTH - active.x)
+		: active.width;
+	const height = top || bottom
+		? clamp(requested.height, minHeightFor(moduleId), top ? active.y + active.height : SURFACE_HEIGHT - active.y)
+		: active.height;
+	return {
+		x: left ? active.x + active.width - width : active.x,
+		y: top ? active.y + active.height - height : active.y,
+		width,
+		height,
+	};
+}
+
+function clampToSurface(position: ModulePosition, moduleId?: string): ModulePosition {
 	const width = clamp(position.width, MIN_WIDTH, SURFACE_WIDTH);
-	const height = clamp(position.height, MIN_HEIGHT, SURFACE_HEIGHT);
+	const height = clamp(position.height, minHeightFor(moduleId ?? ""), SURFACE_HEIGHT);
 	return {
 		width,
 		height,
@@ -514,6 +594,10 @@ function layoutIsValid(modules: DashboardLayout): boolean {
 				.every(([otherId, other]) => moduleId === otherId || !overlapsWithGap(position, other)),
 		)
 	);
+}
+
+function minHeightFor(moduleId: string): number {
+	return MIN_HEIGHT_BY_MODULE[moduleId] ?? MIN_HEIGHT;
 }
 
 function insideSurface(position: ModulePosition): boolean {
@@ -548,4 +632,37 @@ function distanceFrom(first: ModulePosition, second: ModulePosition): number {
 
 function clamp(value: number, minimum: number, maximum: number): number {
 	return Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
+}
+
+/** Identify neighboring panels displaced or resized by an interaction. */
+export function findChangedNeighborIds(
+	moduleId: string,
+	before: DashboardLayout,
+	after: DashboardLayout,
+): string[] {
+	return Object.keys(before).filter((id) => {
+		if (id === moduleId || !after[id]) return false;
+		const prior = before[id];
+		const next = after[id];
+		return (
+			prior.x !== next.x || prior.y !== next.y ||
+			prior.width !== next.width || prior.height !== next.height
+		);
+	});
+}
+
+/** Snap anchors also glow, even if the snap does not push another panel. */
+export function findMoveAffectedModules(
+	moduleId: string,
+	requested: ModulePosition,
+	current: DashboardLayout,
+): string[] {
+	const changed = findChangedNeighborIds(
+		moduleId, current, resolveModulePosition(moduleId, requested, current),
+	);
+	const { anchors } = getSnapResult(moduleId, clampToSurface(requested), current);
+	for (const anchor of anchors) {
+		if (!changed.includes(anchor)) changed.push(anchor);
+	}
+	return changed;
 }

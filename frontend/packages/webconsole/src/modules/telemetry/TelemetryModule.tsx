@@ -59,13 +59,13 @@ export const demoTelemetryStream: TelemetryStream = {
 interface TelemetryModuleProps {
 	readings?: TelemetryReading[];
 	stream?: TelemetryStream;
-	isGuided?: boolean;
+	isAffected?: boolean;
 }
 
 export function TelemetryModule({
 	readings,
 	stream,
-	isGuided = false,
+	isAffected = false,
 }: TelemetryModuleProps) {
 	const [streamReadings, setStreamReadings] = useState<TelemetryReading[]>(
 		readings ?? defaultReadings,
@@ -90,7 +90,7 @@ export function TelemetryModule({
 			title="Telemetry overview"
 			status="live"
 			statusLabel="Live"
-			className={isGuided ? "snap-target" : ""}
+			className={isAffected ? "affected-module" : ""}
 		>
 			<div className={styles.telemetry}>
 				<div className={styles.summary}>

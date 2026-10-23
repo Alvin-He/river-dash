@@ -95,7 +95,7 @@ button {
 	position: absolute;
 }
 
-.snap-target {
+.affected-module {
 	border-color: var(--color-accent) !important;
 	box-shadow:
 		0 0 0 1px var(--color-accent),

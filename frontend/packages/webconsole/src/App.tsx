@@ -2,10 +2,11 @@ import { useState } from "react";
 import { FloatingModule, type ModulePosition } from "./components/FloatingModule";
 import {
 	createInitialLayout,
-	findMoveGuide,
+	findChangedNeighborIds,
+	findMoveAffectedModules,
 	resizeWithNeighbors,
 	resolveModulePosition,
-	type SnapTarget,
+	type DashboardLayout,
 } from "./layout/dashboardLayout";
 import { PlaceholderModule } from "./modules/placeholder";
 import { demoTelemetryStream, TelemetryModule } from "./modules/telemetry";
@@ -15,10 +16,25 @@ import "./App.css";
 function App() {
 	const [positions, setPositions] = useState(createInitialLayout);
 	const [isLocked, setIsLocked] = useState(false);
-	const [snapTarget, setSnapTarget] = useState<SnapTarget | null>(null);
+	const [dragPreview, setDragPreview] = useState<{
+		moduleId: string;
+		position: ModulePosition;
+	} | null>(null);
+	const [resizeStart, setResizeStart] = useState<{
+		moduleId: string;
+		layout: DashboardLayout;
+	} | null>(null);
+
+	const affectedModuleIds = new Set(
+		dragPreview
+			? findMoveAffectedModules(dragPreview.moduleId, dragPreview.position, positions)
+			: resizeStart
+				? findChangedNeighborIds(resizeStart.moduleId, resizeStart.layout, positions)
+				: [],
+	);
 
 	const updatePosition = (moduleId: string) => (requested: ModulePosition) => {
-		setSnapTarget(null);
+		setDragPreview(null);
 		setPositions((current) => resolveModulePosition(moduleId, requested, current));
 	};
 
@@ -32,10 +48,15 @@ function App() {
 	};
 
 	const previewMove = (moduleId: string) => (requested: ModulePosition) => {
-		setSnapTarget(findMoveGuide(moduleId, requested, positions));
+		setDragPreview({ moduleId, position: requested });
 	};
 
-	const clearSnapTarget = () => setSnapTarget(null);
+	const clearDragPreview = () => setDragPreview(null);
+	const beginResize = (moduleId: string) => () => {
+		setDragPreview(null);
+		setResizeStart({ moduleId, layout: positions });
+	};
+	const endResize = () => setResizeStart(null);
 
 	return (
 		<main className="console">
@@ -62,11 +83,13 @@ function App() {
 						onPositionChange={updatePosition("pressure")}
 						onResize={updateResize("pressure")}
 						onDragPreview={previewMove("pressure")}
-						onDragEnd={clearSnapTarget}
+						onDragEnd={clearDragPreview}
+						onResizeStart={beginResize("pressure")}
+						onResizeEnd={endResize}
 					>
 						<PlaceholderModule
 							title="Propellant pressures"
-							isGuided={snapTarget?.moduleId === "pressure"}
+							isAffected={affectedModuleIds.has("pressure")}
 						/>
 					</FloatingModule>
 
@@ -77,11 +100,13 @@ function App() {
 						onPositionChange={updatePosition("telemetry")}
 						onResize={updateResize("telemetry")}
 						onDragPreview={previewMove("telemetry")}
-						onDragEnd={clearSnapTarget}
+						onDragEnd={clearDragPreview}
+						onResizeStart={beginResize("telemetry")}
+						onResizeEnd={endResize}
 					>
 						<TelemetryModule
 							stream={demoTelemetryStream}
-							isGuided={snapTarget?.moduleId === "telemetry"}
+							isAffected={affectedModuleIds.has("telemetry")}
 						/>
 					</FloatingModule>
 
@@ -91,9 +116,11 @@ function App() {
 						onPositionChange={updatePosition("pid")}
 						onResize={updateResize("pid")}
 						onDragPreview={previewMove("pid")}
-						onDragEnd={clearSnapTarget}
+						onDragEnd={clearDragPreview}
+						onResizeStart={beginResize("pid")}
+						onResizeEnd={endResize}
 					>
-						<PlaceholderModule title="P&ID" isGuided={snapTarget?.moduleId === "pid"} />
+						<PlaceholderModule title="P&ID" isAffected={affectedModuleIds.has("pid")} />
 					</FloatingModule>
 
 					<FloatingModule
@@ -102,11 +129,13 @@ function App() {
 						onPositionChange={updatePosition("controls")}
 						onResize={updateResize("controls")}
 						onDragPreview={previewMove("controls")}
-						onDragEnd={clearSnapTarget}
+						onDragEnd={clearDragPreview}
+						onResizeStart={beginResize("controls")}
+						onResizeEnd={endResize}
 					>
 						<PlaceholderModule
 							title="Mode & Valve Control"
-							isGuided={snapTarget?.moduleId === "controls"}
+							isAffected={affectedModuleIds.has("controls")}
 						/>
 					</FloatingModule>
 
@@ -116,11 +145,13 @@ function App() {
 						onPositionChange={updatePosition("events")}
 						onResize={updateResize("events")}
 						onDragPreview={previewMove("events")}
-						onDragEnd={clearSnapTarget}
+						onDragEnd={clearDragPreview}
+						onResizeStart={beginResize("events")}
+						onResizeEnd={endResize}
 					>
 						<PlaceholderModule
 							title="Operator event log"
-							isGuided={snapTarget?.moduleId === "events"}
+							isAffected={affectedModuleIds.has("events")}
 						/>
 					</FloatingModule>
 
@@ -131,10 +162,12 @@ function App() {
 						onPositionChange={updatePosition("graphs")}
 						onResize={updateResize("graphs")}
 						onDragPreview={previewMove("graphs")}
-						onDragEnd={clearSnapTarget}
+						onDragEnd={clearDragPreview}
+						onResizeStart={beginResize("graphs")}
+						onResizeEnd={endResize}
 					>
 						<TimeSeriesGraphModule
-							isGuided={snapTarget?.moduleId === "graphs"}
+							isAffected={affectedModuleIds.has("graphs")}
 						/>
 					</FloatingModule>
 				</div>

@@ -18,6 +18,8 @@ interface FloatingModuleProps {
 	onResize: (position: ModulePosition, direction: string) => void;
 	onDragPreview: (position: ModulePosition) => void;
 	onDragEnd: () => void;
+	onResizeStart: () => void;
+	onResizeEnd: () => void;
 }
 
 const resizeHandles = {
@@ -77,6 +79,8 @@ export function FloatingModule({
 	onResize,
 	onDragPreview,
 	onDragEnd,
+	onResizeStart,
+	onResizeEnd,
 }: FloatingModuleProps) {
 	return (
 		<Rnd
@@ -97,6 +101,7 @@ export function FloatingModule({
 				onPositionChange({ ...position, x: data.x, y: data.y });
 				onDragEnd();
 			}}
+			onResizeStart={onResizeStart}
 			onResize={(_event, direction, element, _delta, nextPosition) => {
 				onResize(
 					{
@@ -107,6 +112,18 @@ export function FloatingModule({
 					},
 					direction,
 				);
+			}}
+			onResizeStop={(_event, direction, element, _delta, nextPosition) => {
+				onResize(
+					{
+						x: nextPosition.x,
+						y: nextPosition.y,
+						width: element.offsetWidth,
+						height: element.offsetHeight,
+					},
+					direction,
+				);
+				onResizeEnd();
 			}}
 		>
 			{children}

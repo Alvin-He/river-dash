@@ -8,13 +8,13 @@ import type { GraphDataStream, GraphSeries } from "./types";
 interface TimeSeriesGraphModuleProps {
 	series?: GraphSeries[];
 	stream?: GraphDataStream;
-	isGuided?: boolean;
+	isAffected?: boolean;
 }
 
 export function TimeSeriesGraphModule({
 	series,
 	stream = demoGraphStream,
-	isGuided = false,
+	isAffected = false,
 }: TimeSeriesGraphModuleProps) {
 	const [streamSeries, setStreamSeries] = useState<GraphSeries[]>(
 		series ?? createDemoGraphSeries(),
@@ -36,7 +36,7 @@ export function TimeSeriesGraphModule({
 			title="Time series graphs"
 			status="live"
 			statusLabel="Live"
-			className={isGuided ? "snap-target" : ""}
+			className={isAffected ? "affected-module" : ""}
 		>
 			<div className={styles.graphModule}>
 				<div className={styles.toolbar}>
