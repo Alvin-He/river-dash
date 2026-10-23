@@ -1,12 +1,6 @@
 import { err, ok, Result, safeTry } from "neverthrow";
 import "./topic.ts";
-import {
-	TopicOpenMode,
-	TopicRead,
-	TopicRW,
-	TopicWrite,
-	type TopicAny,
-} from "./topic.ts";
+import { TopicOpenMode, TopicRead, TopicRW, type TopicAny } from "./topic.ts";
 import {
 	NetworkStreamMessage,
 	NetworkStreamMessageType,
@@ -19,9 +13,9 @@ import type {
 	NetworkSerUpdate,
 } from "./network_serialize.ts";
 import {
+	DataTypes,
 	network_deserialize_any_declare,
 	type Any,
-	type DataTypes,
 } from "./types.ts";
 
 /**
@@ -210,6 +204,59 @@ TopicRegistered satisfies NetworkDeDeclare<TopicRegistered>;
 
 /**
  * Global Data Table that provides communication and data flow within RiverDash.
+ *
+ * Typical Usage:
+ *
+ * 1. Subscribing / Getting / Writing Data:
+ *	```js
+ *	const [topic, setTopic] = useState<TopicRead<F32> | undefined>(undefined);
+ *	const [state, setState] = useState(0);
+ *
+ *	// effect for getting an event
+ *	useEffect(() => {
+ *		return EventTopicInitialized.add_listener_to(GDT, (e: EventTopicInitialized) => {
+ *			// check if the topic you want got initialized
+ *			if (e.m_info.name !== "Topic Name") return;
+ *
+ *			// get topic
+ *			const topic = GDT.get_topic(e.m_info.name, TopicOpenMode.Read).match(
+ *				(t) => t,
+ *				(e) => console.log(e),
+ *			);
+ *			if (topic == undefined) return;
+ *
+ *			// set topic
+ *			setTopic(topic as TopicRead<F32>);
+ *		});
+ *	});
+ *
+ *	// effects for getting new event data
+ *	useEffect(() => {
+ *		// if no topic
+ *		if (topic == undefined) return;
+ *
+ *		return EventTopicUpdate.add_listener_to<F32>(topic, (e) => {
+ *			// sets state
+ *			setState(e.m_data.get());
+ *
+ *			// or do something else with data
+ *		});
+ *	}, [topic]);
+ *	```
+ *
+ * 2. Publishing / Declaring Topic
+ * ```
+ *	GDT.initialize_topic(
+ *		"Topic Name",
+ *		TopicOpenMode.ReadWrite,
+ *		DataTypes.F32,
+ *		F32.from(0)._unsafeUnwrap(),
+ *		undefined,
+ *		TopicOpenMode.Read,
+ *	);
+ *  // Then follow instructions for subscribing / writing data
+ * ```
+ *
  */
 export class GlobalDataTable extends EventTarget {
 	private m_topic_stream_endpoint: NetworkTopicStream;
@@ -287,8 +334,8 @@ export class GlobalDataTable extends EventTarget {
 	): Result<TopicRead<Any>, Errors>;
 	public get_topic(
 		name: string,
-		mode: TopicOpenMode.Write,
-	): Result<TopicWrite<Any>, Errors>;
+		mode: TopicOpenMode.ReadWriteMany,
+	): Result<TopicRW<Any>, Errors>;
 	public get_topic(
 		name: string,
 		mode: TopicOpenMode.ReadWrite,
@@ -314,27 +361,23 @@ export class GlobalDataTable extends EventTarget {
 			topic.read_instances.push(new WeakRef(t));
 			return ok(t);
 		}
-		// write modes
+
+		// all below is read & write modes
 
 		// bad mode (trying to open read mode topic as write mode)
 		if (topic.info.mode === TopicOpenMode.Read)
 			return err(Errors.ErrNotAllowed);
 
-		// attempting to open a topic for write more than once
-		if (topic.write_instances >= 1) return err(Errors.ErrTooManyOpen);
-
-		// write mode
-		// the topic is in either write or read-write mode, in which write access is always allowed
-		if (mode === TopicOpenMode.Write) {
-			const t = new TopicWrite<Any>(name, this.get_topic_data_setter(topic));
+		// Single Read-Write mode, only one writer can be opened
+		if (topic.info.mode === TopicOpenMode.ReadWrite) {
+			// attempting to open a topic for write more than once
+			if (topic.write_instances >= 1) return err(Errors.ErrTooManyOpen);
 			topic.write_instances += 1;
-			return ok(t);
-		}
-
-		// Read-Write mode
-		// read access is always allowed on a write topic as long as the topic has data
+		} // else Many Read Write Mode
 
 		// no data available yet
+		// it is assumed that if you are opening as RW you must have either supplied init data
+		// or you are using the immediately returned topic from initialize_topic
 		if (topic.last_data == undefined || topic.last_data_ts == undefined) {
 			return err(Errors.ErrNoDataYet);
 		}
@@ -353,6 +396,9 @@ export class GlobalDataTable extends EventTarget {
 	/**
 	 * Initializes a new topic
 	 *
+	 * @template D Optional - the data type of the topic. Undefined behavior if D is
+	 * 	specified but does not match {@link type}
+	 *
 	 * @param name the name of the new topic
 	 * @param mode the mode of the topic
 	 * @param type the type of the topic
@@ -362,15 +408,34 @@ export class GlobalDataTable extends EventTarget {
 	 * 	Otherwise it is a declaration.
 	 * @param peer_mode Optional - Peer Access mode.
 	 * 	If specified, this topic is declared across the network
+	 *
+	 * @returns void if mode == {@link TopicOpenMode.Read}; TopicRW<D> if mode ==
+	 * 	{@link TopicOpenMode.ReadWrite} or {@link TopicOpenMode.ReadWriteMany}
 	 */
 	public initialize_topic(
 		name: string,
-		mode: TopicOpenMode,
+		mode: TopicOpenMode.Read,
 		type: DataTypes,
 		init_data_or_declaration: Any,
 		init_ts?: Temporal.Instant,
 		peer_mode?: TopicOpenMode,
-	): void {
+	): void;
+	public initialize_topic<D extends Any>(
+		name: string,
+		mode: TopicOpenMode.ReadWrite | TopicOpenMode.ReadWriteMany,
+		type: DataTypes,
+		init_data_or_declaration: D,
+		init_ts?: Temporal.Instant,
+		peer_mode?: TopicOpenMode,
+	): TopicRW<D>;
+	public initialize_topic<D extends Any>(
+		name: string,
+		mode: TopicOpenMode,
+		type: DataTypes,
+		init_data_or_declaration: D,
+		init_ts?: Temporal.Instant,
+		peer_mode?: TopicOpenMode,
+	): TopicRW<D> | void {
 		const topic = new TopicRegistered(
 			name,
 			mode,
@@ -387,23 +452,38 @@ export class GlobalDataTable extends EventTarget {
 		}
 
 		// when peer mode is specified
-		if (peer_mode == undefined) return;
-
-		this.m_topic_stream_endpoint.stream_send_message(
-			new NetworkStreamMessage(
-				name,
-				NetworkStreamMessageType.Declare,
-				init_data_or_declaration.network_serialize_declare(),
-			),
-		);
-
-		if (init_ts != undefined) {
+		if (peer_mode != undefined) {
 			this.m_topic_stream_endpoint.stream_send_message(
 				new NetworkStreamMessage(
 					name,
-					NetworkStreamMessageType.Update,
-					init_data_or_declaration.network_serialize_update(),
+					NetworkStreamMessageType.Declare,
+					init_data_or_declaration.network_serialize_declare(),
 				),
+			);
+
+			if (init_ts != undefined) {
+				this.m_topic_stream_endpoint.stream_send_message(
+					new NetworkStreamMessage(
+						name,
+						NetworkStreamMessageType.Update,
+						init_data_or_declaration.network_serialize_update(),
+					),
+				);
+			}
+		}
+
+		// return new TopicRW if mode if RW or RWM
+		if (
+			mode === TopicOpenMode.ReadWrite ||
+			mode === TopicOpenMode.ReadWriteMany
+		) {
+			if (mode === TopicOpenMode.ReadWrite) topic.write_instances += 1;
+
+			return new TopicRW<D>(
+				name,
+				init_data_or_declaration,
+				init_ts ?? Temporal.Instant.fromEpochMilliseconds(0),
+				this.get_topic_data_setter(topic),
 			);
 		}
 	}
@@ -493,18 +573,26 @@ export class EventTopicDeclared extends Event {
 	}
 
 	/**
-	 * Add an event listener for this type of event to an event target.
-	 * @param target EventTarget
-	 * @param event_callback event callback
+	 * Adds a listener of this type to an event
+	 *
+	 * @param target the EventTarget
+	 * @param event_callback the event callback
+	 * @returns Function to call to cancel this event
 	 */
 	public static add_listener_to(
 		target: EventTarget,
 		event_callback: (event: EventTopicDeclared) => void | Promise<void>,
-	): void {
+	): () => void {
 		target.addEventListener(
 			EventTopicDeclared.TYPE,
 			event_callback as (e: Event) => void,
 		);
+
+		return () =>
+			target.removeEventListener(
+				EventTopicDeclared.TYPE,
+				event_callback as (e: Event) => void,
+			);
 	}
 }
 
@@ -548,15 +636,24 @@ export class EventTopicInitialized extends Event {
 	 * Add an event listener for this type of event to an event target.
 	 * @param target EventTarget
 	 * @param event_callback event callback
+	 *
+	 * @returns Function to call to cancel this event
 	 */
 	public static add_listener_to(
 		target: EventTarget,
 		event_callback: (event: EventTopicInitialized) => void | Promise<void>,
-	): void {
+	): () => void {
 		target.addEventListener(
 			EventTopicInitialized.TYPE,
 			event_callback as (e: Event) => void,
 		);
+
+		return () => {
+			target.removeEventListener(
+				this.TYPE,
+				event_callback as (e: Event) => void,
+			);
+		};
 	}
 }
 

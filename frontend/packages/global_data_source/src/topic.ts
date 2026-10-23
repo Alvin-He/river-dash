@@ -10,8 +10,8 @@ import type { Any } from "./types.ts";
  */
 export enum TopicOpenMode {
 	Read = "R",
-	Write = "W",
 	ReadWrite = "RW",
+	ReadWriteMany = "RWM",
 }
 
 /**
@@ -233,15 +233,22 @@ export class EventTopicUpdate<Data> extends Event {
 	 *
 	 * @param target the EventTarget
 	 * @param event_callback the event callback
+	 * @returns Function to call to cancel this event
 	 */
 	public static add_listener_to<Data extends Any>(
 		target: EventTarget,
 		event_callback: (event: EventTopicUpdate<Data>) => void | Promise<void>,
-	): void {
+	): () => void {
 		target.addEventListener(
 			EventTopicUpdate.TYPE,
 			event_callback as (e: Event) => void,
 		);
+
+		return () =>
+			target.removeEventListener(
+				EventTopicUpdate.TYPE,
+				event_callback as (e: Event) => void,
+			);
 	}
 }
 

@@ -10,7 +10,7 @@ import type {
  * Any compatible RiverDash datatype
  */
 export type Any =
-	I16 | I32 | I64 | U16 | U32 | U64 | F32 | F64 | Enum | Group | ADT;
+	I16 | I32 | I64 | U16 | U32 | U64 | F32 | F64 | Message | Enum | Group | ADT;
 
 /**
  * Available underlying data types;
@@ -24,6 +24,7 @@ export enum DataTypes {
 	U16 = "U16",
 	U32 = "U32",
 	U64 = "U64",
+	Message = "Message",
 	Enum = "Enum",
 	Record = "Record", // basically structs
 	Group = "Group", // basically arrays
@@ -60,6 +61,8 @@ export function network_deserialize_any_declare(
 			return U32.network_deserialize_declare(data);
 		case DataTypes.U64:
 			return U64.network_deserialize_declare(data);
+		case DataTypes.Message:
+			return Message.network_deserialize_declare(data);
 		case DataTypes.Enum:
 			return Enum.network_deserialize_declare(data);
 		case DataTypes.ADT:
@@ -198,8 +201,14 @@ export class NumberDecimal
 
 /**
  * 32bit signed integer
+ *
+ * To create, call:
+ * ```
+ * let i32 = I32.from(number);
+ * ```
  */
 export class I32 extends NumberNorInteger {
+	public static readonly TYPE: DataTypes = DataTypes.I32;
 	public static readonly MAX: number = 2 ** 31 - 1;
 	public static readonly MIN: number = -(2 ** 31);
 
@@ -207,6 +216,12 @@ export class I32 extends NumberNorInteger {
 		super(0, I32.MAX, I32.MIN);
 	}
 
+	/**
+	 * Create an I32 from a number
+	 *
+	 * @param n the number
+	 * @returns ok if number fits within range, NumericError if not
+	 */
 	public static from(n: number): Result<I32, NumericError> {
 		return new I32().checked_set(n);
 	}
@@ -221,8 +236,14 @@ I32 satisfies NetworkDeDeclare<I32>;
 
 /**
  * 16bit signed integer
+ *
+ * To create, call:
+ * ```
+ * let i16 = I16.from(number);
+ * ```
  */
 export class I16 extends NumberNorInteger {
+	public static readonly TYPE: DataTypes = DataTypes.I16;
 	public static readonly MAX: number = 2 ** 15 - 1;
 	public static readonly MIN: number = -(2 ** 15);
 
@@ -230,6 +251,12 @@ export class I16 extends NumberNorInteger {
 		super(0, I16.MAX, I16.MIN);
 	}
 
+	/**
+	 * Create an I16 from a number
+	 *
+	 * @param n the number
+	 * @returns ok if number fits within range, NumericError if not
+	 */
 	public static from(n: number): Result<I16, NumericError> {
 		return new I16().checked_set(n);
 	}
@@ -244,8 +271,14 @@ I16 satisfies NetworkDeDeclare<I16>;
 
 /**
  * 64bit signed integer
+ *
+ * To create, call:
+ * ```
+ * let i64 = I64.from(bigint);
+ * ```
  */
 export class I64 extends NumberBigInteger {
+	public static readonly TYPE: DataTypes = DataTypes.I64;
 	public static readonly MAX: bigint = 2n ** 63n - 1n;
 	public static readonly MIN: bigint = -(2n ** 63n);
 
@@ -253,6 +286,12 @@ export class I64 extends NumberBigInteger {
 		super(0n, I64.MAX, I64.MIN);
 	}
 
+	/**
+	 * Create an I64 from a bigint
+	 *
+	 * @param n the bigint
+	 * @returns ok if bigint fits within range, NumericError if not
+	 */
 	public static from(n: bigint): Result<I64, NumericError> {
 		return new I64().checked_set(n);
 	}
@@ -267,8 +306,14 @@ I64 satisfies NetworkDeDeclare<I64>;
 
 /**
  * 16bit unsigned integer
+ *
+ * To create, call:
+ * ```
+ * let u16 = U16.from(number);
+ * ```
  */
 export class U16 extends NumberNorInteger {
+	public static readonly TYPE: DataTypes = DataTypes.U16;
 	public static readonly MAX: number = 2 ** 16 - 1;
 	public static readonly MIN: number = 0;
 
@@ -276,6 +321,12 @@ export class U16 extends NumberNorInteger {
 		super(0, U16.MAX, U16.MIN);
 	}
 
+	/**
+	 * Create an U16 from a number
+	 *
+	 * @param n the number
+	 * @returns ok if number fits within range, NumericError if not
+	 */
 	public static from(n: number): Result<U16, NumericError> {
 		return new U16().checked_set(n);
 	}
@@ -290,8 +341,14 @@ U16 satisfies NetworkDeDeclare<U16>;
 
 /**
  * 32bit unsigned integer
+ *
+ * To create, call:
+ * ```
+ * let u32 = U32.from(number);
+ * ```
  */
 export class U32 extends NumberNorInteger {
+	public static readonly TYPE: DataTypes = DataTypes.U32;
 	public static readonly MAX: number = 2 ** 32 - 1;
 	public static readonly MIN: number = 0;
 
@@ -299,6 +356,12 @@ export class U32 extends NumberNorInteger {
 		super(0, U32.MAX, U32.MIN);
 	}
 
+	/**
+	 * Create an U32 from a number
+	 *
+	 * @param n the number
+	 * @returns ok if number fits within range, NumericError if not
+	 */
 	public static from(n: number): Result<U32, NumericError> {
 		return new U32().checked_set(n);
 	}
@@ -313,8 +376,14 @@ U32 satisfies NetworkDeDeclare<U32>;
 
 /**
  * 64bit unsigned integer
+ *
+ * To create, call:
+ * ```
+ * let u64 = U64.from(bigint);
+ * ```
  */
 export class U64 extends NumberBigInteger {
+	public static readonly TYPE: DataTypes = DataTypes.U64;
 	public static readonly MAX: bigint = 2n ** 64n - 1n;
 	public static readonly MIN: bigint = 0n;
 
@@ -322,6 +391,12 @@ export class U64 extends NumberBigInteger {
 		super(0n, U64.MAX, U64.MIN);
 	}
 
+	/**
+	 * Create an U64 from a bigint
+	 *
+	 * @param n the bigint
+	 * @returns ok if the bigint fits within range, NumericError if not
+	 */
 	public static from(n: bigint): Result<U64, NumericError> {
 		return new U64().checked_set(n);
 	}
@@ -336,8 +411,14 @@ U64 satisfies NetworkDeDeclare<U64>;
 
 /**
  * 32bit IEEE 754 single precision decimal
+ *
+ * To create, call:
+ * ```
+ * let f32 = F32.from(number);
+ * ```
  */
 export class F32 extends NumberDecimal {
+	public static readonly TYPE: DataTypes = DataTypes.F32;
 	public static readonly MAX: number = (2 - 2 ** -23) * 2 ** 127;
 	public static readonly MIN: number = -(2 - 2 ** -23) * 2 ** 127;
 
@@ -345,6 +426,12 @@ export class F32 extends NumberDecimal {
 		super(0, F32.MAX, F32.MIN);
 	}
 
+	/**
+	 * Create an F32 from a number
+	 *
+	 * @param n the number
+	 * @returns ok if number fits within range, NumericError if not
+	 */
 	public static from(n: number): Result<F32, NumericError> {
 		return new F32().checked_set(n);
 	}
@@ -361,8 +448,14 @@ F32 satisfies NetworkDeDeclare<F32>;
  * 64bit IEEE 754 single precision decimal.
  *
  * This is equivalent to `number`
+ *
+ * To create, call:
+ * ```
+ * let f64 = F64.from(number);
+ * ```
  */
 export class F64 extends NumberDecimal {
+	public static readonly TYPE: DataTypes = DataTypes.F64;
 	// JS number is IEEE 754 binary64
 	public static readonly MAX: number = Number.MAX_VALUE;
 	public static readonly MIN: number = Number.MIN_VALUE;
@@ -371,6 +464,12 @@ export class F64 extends NumberDecimal {
 		super(0, F64.MAX, F64.MIN);
 	}
 
+	/**
+	 * Create an F64 from a number
+	 *
+	 * @param n the number
+	 * @returns ok if number fits within range, NumericError if not
+	 */
 	public static from(n: number): Result<F64, NumericError> {
 		return new F64().checked_set(n);
 	}
@@ -382,6 +481,79 @@ export class F64 extends NumberDecimal {
 	}
 }
 F64 satisfies NetworkDeDeclare<F64>;
+
+/**
+ * A String Message. This can be used to represent any textual data or JSON.
+ *
+ * If you do use a Message to represent you own data, you must perform your
+ * own data validation. This class does not provide any validation except that
+ * you get a string.
+ *
+ * To create, call:
+ * ```
+ * let msg = new Message("Hello World");
+ * ```
+ * or
+ * ```
+ * let empty_msg = new Message();
+ * ```
+ */
+export class Message
+	implements NetworkSerUpdate, NetworkDeUpdate, NetworkSerDeclare
+{
+	public static readonly TYPE: DataTypes = DataTypes.Message;
+
+	declare private m_value: string;
+
+	/**
+	 * Create a Message.
+	 */
+	public constructor();
+	/**
+	 * Create a Message with an initial string
+	 * @param value the initial value
+	 */
+	public constructor(value: string);
+	public constructor(value?: string) {
+		this.m_value = value ?? "";
+	}
+
+	/**
+	 * Gets the current data
+	 *
+	 * @returns the current string
+	 */
+	public get(): string {
+		return this.m_value;
+	}
+
+	/**
+	 * Sets the underlying data
+	 *
+	 * @param value the new value
+	 */
+	public set(value: string) {
+		this.m_value = value;
+	}
+
+	public network_serialize_update(): string {
+		return this.m_value;
+	}
+	public network_deserialize_update(data: string): Result<void, string> {
+		this.m_value = data;
+		return ok();
+	}
+	public network_serialize_declare(): string {
+		return "";
+	}
+
+	public static network_deserialize_declare(
+		_data: string,
+	): Result<Message, string> {
+		return ok(new Message());
+	}
+}
+Message satisfies NetworkDeDeclare<Message>;
 
 /**
  * An TaggedUnion. (aka ADT)
@@ -410,11 +582,13 @@ export class TaggedUnion<T, TIdent>
 	 */
 	public associate(
 		discriminant: number,
+		name: string,
 		value: T,
 		type: TIdent,
 	): TaggedUnion<T, TIdent> {
 		const variant: TUVariant<T, TIdent> = {
 			parent: this,
+			name,
 			discriminant,
 			type,
 			value,
@@ -502,6 +676,8 @@ export interface TUVariant<T, TIdent> {
 	parent: TaggedUnion<T, TIdent>;
 	/** This variant's discriminant */
 	discriminant: number;
+	/** This variant's name */
+	name: string;
 	/** This variant's type. If used as an enum, this'll be the same for all Variants */
 	type: TIdent;
 	/** The value of this variant */
@@ -509,17 +685,25 @@ export interface TUVariant<T, TIdent> {
 }
 
 /**
- * An Enum. This is a {@link TaggedUnion} of strings. With a type ident of "string": string.
+ * An Enum. This is a {@link TaggedUnion} of nothing (void, void).
+ * It associates a discriminant with an name.
+ *
+ * Usage:
+ * ```js
+ *	let enum = new Enum()
+ *		.associate(0, "hello world")
+ *		.associate(1, "variant 1")
+ *	;
+ *  enum.set_active(1);
+ * ```
  */
-export class Enum
-	extends TaggedUnion<string, string>
-	implements NetworkSerDeclare
-{
+export class Enum extends TaggedUnion<void, void> implements NetworkSerDeclare {
+	public static readonly TYPE: DataTypes = DataTypes.Enum;
 	public network_serialize_declare(): string {
 		const variants_obj: [number, string][] = [];
 
 		for (const v of this.m_variants.values()) {
-			variants_obj.push([v.discriminant, v.value]);
+			variants_obj.push([v.discriminant, v.name]);
 		}
 
 		return JSON.stringify(variants_obj);
@@ -549,14 +733,14 @@ export class Enum
 			if (v.length != 2)
 				return err(`PARSE: Variant length is not 2. l is ${v.length}\n`);
 
-			const dis = Number(v[0]);
-			const val: unknown = v[1];
-			if (!Number.isSafeInteger(dis))
+			const disc = Number(v[0]);
+			const name: unknown = v[1];
+			if (!Number.isSafeInteger(disc))
 				return err(`PARSE: Invalid discriminant: ${v[0]}\n`);
-			if (typeof val !== "string")
+			if (typeof name !== "string")
 				return err(`PARSE: Invalid value, not a string: ${v[1]}\n`);
 
-			new_e.associate(dis, val, "string");
+			new_e.associate(disc, name);
 		}
 
 		return ok(new_e);
@@ -566,17 +750,33 @@ Enum satisfies NetworkDeDeclare<Enum>;
 
 /**
  * An ADT or tagged union. This is a {@link TaggedUnion} of {@link Any} and type ident {@link DataTypes}
+ *
+ * Usage:
+ * ```js
+ *	let adt = new ADT()
+ *		.associate(0, "Group A Average", F32.from(0.1), F32.TYPE)
+ *		.associate(1, "Group A", new Group()
+ *			.add_value(F32.from(0.0), "Sensor 1", F32.TYPE)
+ *			.add_value(F32.from(0.1), "Sensor 2", F32.TYPE)
+ *			.add_value(F32.from(0.2), "Sensor 3", F32.TYPE),
+ *		Group.TYPE
+ *	);
+ *	adt.set_active(1);
+ * ```
  */
 export class ADT
 	extends TaggedUnion<Any, DataTypes>
 	implements NetworkSerDeclare
 {
+	public static readonly TYPE: DataTypes = DataTypes.ADT;
+
 	public network_serialize_declare(): string {
-		const variants_obj: [number, string, string][] = [];
+		const variants_obj: [number, string, string, string][] = [];
 
 		for (const v of this.m_variants.values()) {
 			variants_obj.push([
 				v.discriminant,
+				v.name,
 				v.type satisfies string,
 				v.value.network_serialize_declare(),
 			]);
@@ -609,10 +809,13 @@ export class ADT
 					return err(`PARSE: Variant length is not 2. l is ${v.length}\n`);
 
 				const dis = Number(v[0]);
-				const type: unknown = v[1];
-				const data: unknown = v[2];
+				const name: unknown = v[1];
+				const type: unknown = v[2];
+				const data: unknown = v[3];
 				if (!Number.isSafeInteger(dis))
 					return err(`PARSE: Invalid discriminant: ${v[0]}\n`);
+				if (typeof name !== "string")
+					return err(`PARSE: Invalid name, not a string: ${String(name)}\n`);
 				if (typeof type !== "string")
 					return err(`PARSE: Invalid type, not a string: ${String(type)}\n`);
 				if (typeof data !== "string")
@@ -620,7 +823,7 @@ export class ADT
 
 				const value = yield* network_deserialize_any_declare(type, data);
 				// type is guaranteed to be DataTypes at this point
-				new_adt.associate(dis, value, type as DataTypes);
+				new_adt.associate(dis, name, value, type as DataTypes);
 			}
 
 			return ok(new_adt);
@@ -664,10 +867,10 @@ export class ADT
 				if (typeof val !== "string")
 					return err(`PARSE: Invalid value, not a string: ${String(val)}\n`);
 
-				yield* super_deserialize(data);
+				yield* super_deserialize(dis);
 
 				if (this.m_active != undefined) {
-					yield* this.m_active.value.network_deserialize_update(data);
+					yield* this.m_active.value.network_deserialize_update(val);
 				}
 
 				return ok();
@@ -682,11 +885,22 @@ ADT satisfies NetworkDeDeclare<ADT>;
  * 	Similar to an array.
  *
  * All items of a group are {@link ValueNamed}.
+ *
+ * Usage:
+ * ```js
+ * new Group()
+ *		.add_value(F32.from(0.0), "Sensor 1", F32.TYPE)
+ *		.add_value(F32.from(0.1), "Sensor 2", F32.TYPE)
+ *		.add_value(F32.from(0.2), "Sensor 3", F32.TYPE)
+ * ;
+ * ```
  */
 export class Group
 	extends Array<ValueNamed<Any>>
 	implements NetworkSerDeclare, NetworkSerUpdate, NetworkDeUpdate
 {
+	public static readonly TYPE: DataTypes = DataTypes.Group;
+
 	/**
 	 * Create a new Group
 	 */
@@ -836,5 +1050,16 @@ export interface ValueNamed<Data extends Any> {
 
 /**
  * A record is a group with a special sense of self
+ *
+ * Usage:
+ * ```js
+ * new Record()
+ *		.add_value(F32.from(10.3), "X", F32.TYPE)
+ *		.add_value(F32.from(23.1), "Y", F32.TYPE)
+ *		.add_value(F32.from(99.2), "Z", F32.TYPE)
+ * ;
+ * ```
  */
-export class Record extends Group {}
+export class Record extends Group {
+	public static override readonly TYPE: DataTypes = DataTypes.Record;
+}
