@@ -17,6 +17,7 @@ function test() {
 	new RiverDashTypes.ADT()
 		.associate(
 			12,
+			"name",
 			RiverDashTypes.F32.from(12)._unsafeUnwrap(),
 			RiverDashTypes.DataTypes.F32,
 		)
@@ -24,7 +25,7 @@ function test() {
 
 	GDT.initialize_topic(
 		"hellowrold",
-		TopicOpenMode.Write,
+		TopicOpenMode.ReadWrite,
 		RiverDashTypes.DataTypes.F32,
 		RiverDashTypes.F32.from(32)._unsafeUnwrap(),
 	);
