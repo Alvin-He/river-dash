@@ -1,4 +1,5 @@
 import { ModuleFrame } from "../../components/ModuleFrame";
+import styles from "./PlaceholderModule.module.css";
 
 interface PlaceholderModuleProps {
 	title: string;
@@ -9,7 +10,7 @@ interface PlaceholderModuleProps {
 export function PlaceholderModule({ title, isAffected = false }: PlaceholderModuleProps) {
 	return (
 		<ModuleFrame title={title} className={isAffected ? "affected-module" : ""}>
-			<div className="placeholder">Placeholder module</div>
+			<div className={styles.placeholder}>Placeholder module</div>
 		</ModuleFrame>
 	);
 }

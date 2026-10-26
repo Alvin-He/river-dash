@@ -1,0 +1,22 @@
+@import "./tokens.css";
+
+/* Global console defaults override the starter styles in index.css. */
+#root {
+	width: var(--console-width);
+	height: var(--console-height);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: var(--color-canvas);
+	color: var(--color-text-primary);
+	font-family: Inter, Arial, sans-serif;
+}
+
+button {
+	font: inherit;
+}

@@ -19,5 +19,5 @@ than duplicating shared layout or styling.
 
 1. Create a folder named for the feature, such as `valve-control/`.
 2. Render the feature content inside `ModuleFrame` from `components/ModuleFrame`.
-3. Register it in the freeform dashboard canvas in `App.tsx`.
+3. Register it in `components/DashboardCanvas/DashboardCanvas.tsx` (with its geometry in `layout/dashboardLayout.ts`).
 4. Add a short description here.

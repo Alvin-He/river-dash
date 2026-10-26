@@ -16,3 +16,14 @@ This directory contains reusable React components shared across dashboard module
 - During a drag, affected or snap-anchor modules glow rather than the dragged
   module. During resizing, the glow follows neighboring modules whose
   position or size changes; it disappears when the interaction ends.
+
+## UI composition
+
+- `ConsoleHeader` owns the brand, layout lock button, and header styling.
+- `DashboardCanvas` owns the panel registration and canvas styling, but not
+  geometry calculations. `layout/useDashboardLayout.ts` handles state.
+- The `FloatingModule` wrapper owns the `react-rnd` styles, while `ModuleFrame`
+  owns the shared module shell and affected-neighbor glow.
+- Placeholder-only styling lives in the placeholder module itself.
+
+See `../layout/README.md` for the interaction lifecycle and invariants.

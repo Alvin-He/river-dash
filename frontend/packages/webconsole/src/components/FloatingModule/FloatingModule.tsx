@@ -1,6 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Rnd } from "react-rnd";
+import "./FloatingModule.css";
 
+/** Pixel geometry relative to the dashboard's module surface. */
 export interface ModulePosition {
 	x: number;
 	y: number;
@@ -22,6 +24,7 @@ interface FloatingModuleProps {
 	onResizeEnd: () => void;
 }
 
+/* All eight handles are intentional; react-rnd reports the active direction. */
 const resizeHandles = {
 	top: true,
 	right: true,
@@ -94,6 +97,7 @@ export function FloatingModule({
 			size={{ width: position.width, height: position.height }}
 			dragHandleClassName="drag-handle"
 			resizeHandleStyles={resizeHandleStyles}
+			// During drag, provide a preview only; commit the position on drag stop.
 			onDrag={(_event, data) =>
 				onDragPreview({ ...position, x: data.x, y: data.y })
 			}
@@ -102,6 +106,7 @@ export function FloatingModule({
 				onDragEnd();
 			}}
 			onResizeStart={onResizeStart}
+			// Live geometry from react-rnd is resolved by the dashboard layout hook.
 			onResize={(_event, direction, element, _delta, nextPosition) => {
 				onResize(
 					{

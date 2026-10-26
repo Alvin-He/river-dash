@@ -7,13 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "test:layout": "node --experimental-strip-types --test tests/dashboardLayout.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
     "react": "^19.2.8",
-		"react-dom": "^19.2.8",
-		"react-rnd": "^10.5.2"
+    "react-dom": "^19.2.8",
+    "react-rnd": "^10.5.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

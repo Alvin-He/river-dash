@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import styles from "./ModuleFrame.module.css";
+import "./ModuleFrame.effects.css";
 
 export type ModuleStatus = "live" | "idle" | "warning" | "error";
 

@@ -1,5 +1,10 @@
 import type { ModulePosition } from "../components/FloatingModule";
 
+/**
+ * Layout coordinates are in pixels relative to the module surface (not the page).
+ * These dimensions match the fixed console size minus header and canvas padding.
+ * Keep these thresholds synchronized with UI module minimum dimensions.
+ */
 const MODULE_GAP = 16;
 const SNAP_DISTANCE = 32;
 const HEADER_SNAP_DISTANCE = 32;
@@ -26,6 +31,7 @@ const initialPositions: DashboardLayout = {
 	graphs: { x: 1088, y: 0, width: 560, height: 420 },
 };
 
+/** Return independent position objects so subsequent edits cannot mutate defaults. */
 export function createInitialLayout(): DashboardLayout {
 	return Object.fromEntries(
 		Object.entries(initialPositions).map(([moduleId, position]) => [
@@ -35,6 +41,11 @@ export function createInitialLayout(): DashboardLayout {
 	);
 }
 
+/**
+ * Finish a drag: snap near neighboring edges, then push obstructing modules.
+ * If pushing would cause an invalid layout, find a nearby free placement.
+ * Drag previews should not call this as a committed state update.
+ */
 export function resolveModulePosition(
 	moduleId: string,
 	requested: ModulePosition,
@@ -55,6 +66,12 @@ export function resolveModulePosition(
 	return openPosition ? { ...current, [moduleId]: openPosition } : current;
 }
 
+/**
+ * Compute a bounded resize using the existing shared-divider rules.
+ * A corner handle applies its horizontal and vertical resize independently;
+ * a blocked resize uses the largest valid intermediate geometry.
+ * This function does not mutate the incoming layout.
+ */
 export function resizeWithNeighbors(
 	moduleId: string,
 	requested: ModulePosition,
@@ -135,6 +152,7 @@ function attemptResize(
 	return allowed && layoutIsValid(next) ? next : current;
 }
 
+/** Identify the neighboring panel used as the current snap guide, if any. */
 export function findMoveGuide(
 	moduleId: string,
 	position: ModulePosition,
@@ -192,6 +210,11 @@ function findNearestOpenPosition(
 	return null;
 }
 
+/**
+ * A growing edge may consume adjacent free space, shrink a neighbor to its
+ * minimum width, or push that neighbor. Shrinking is handled separately by
+ * attemptResize and leaves neighbors unchanged.
+ */
 function resizeHorizontally(
 	next: DashboardLayout,
 	moduleId: string,
@@ -268,6 +291,7 @@ function resizeHorizontally(
 	return true;
 }
 
+/** Vertical counterpart to resizeHorizontally, honoring per-module min heights. */
 function resizeVertically(
 	next: DashboardLayout,
 	moduleId: string,
@@ -344,6 +368,7 @@ function resizeVertically(
 	return true;
 }
 
+/** Move a collision chain, restoring the original layout if any push fails. */
 function tryPush(
 	modules: DashboardLayout,
 	sourceId: string,
@@ -428,6 +453,10 @@ function snapToModules(
 	return getSnapResult(moduleId, position, modules).position;
 }
 
+/**
+ * Find the strongest nearby snap candidate. Header alignment takes priority
+ * over module-top alignment; `anchors` is used only for neighbor glow feedback.
+ */
 function getSnapResult(
 	moduleId: string,
 	position: ModulePosition,
@@ -584,6 +613,7 @@ function clampToSurface(position: ModulePosition, moduleId?: string): ModulePosi
 	};
 }
 
+/** Check surface bounds and the required gap between every pair of modules. */
 function layoutIsValid(modules: DashboardLayout): boolean {
 	const entries = Object.entries(modules);
 	return (
