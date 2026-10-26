@@ -20,8 +20,8 @@ npm run format
 
 echo "Format Backend"
 cd "${SCRIPT_DIR}/backend"
-cargo fmt
-cargo check
+cargo +nightly fmt
+cargo +nightly check
 
 echo "Committing"
 git commit "$@"
