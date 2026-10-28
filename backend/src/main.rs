@@ -16,7 +16,7 @@ use sqlx::SqlitePool;
 
 mod sql;
  
- /// Connection to the app's persistent state
+ /// Connection to the app's persistent state (database)
  #[derive(Clone)]
 struct AppState {
     db: SqlitePool,
@@ -37,7 +37,7 @@ async fn main() {
         .route("/configs/{name}", get(get_config).delete(delete_config))
         .with_state( AppState { db : pool} );
     
-    // Connection Setup
+    // Listen for a client
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await.unwrap();
     println!("Listening on http://localhost:3000");
@@ -47,7 +47,7 @@ async fn main() {
 
 /// TODO: Move all these into sql and make them functions of AppState
 
-/// Get all Config objects from configs
+/// GET all Config objects from configs
 async fn get_configs(State(state): State<AppState>) -> Result<Json<Vec<sql::Config>>, StatusCode> {
     return sql::get_all_configs(&state.db)
         .await
@@ -58,7 +58,7 @@ async fn get_configs(State(state): State<AppState>) -> Result<Json<Vec<sql::Conf
         });
 }
 
-/// Load a specific Config object from configs
+/// GET a specific Config object from configs
 async fn get_config(
     State(state): State<AppState>,
     Path(name): Path<String>,
@@ -73,7 +73,7 @@ async fn get_config(
     }
 }
 
-/// Add a new uniquely named configuration to configs
+/// POST a new uniquely named configuration to configs
 async fn post_config(
     State(state): State<AppState>,
     Json(config): Json<sql::Config>,
@@ -87,7 +87,7 @@ async fn post_config(
         })
 }
 
-/// Remove a configuration from configs by name
+/// DELETE a configuration from configs by name
 async fn delete_config(
     State(state): State<AppState>,
     Path(name): Path<String>,
