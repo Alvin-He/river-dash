@@ -1,22 +1,24 @@
-import { err, ok, Result, safeTry } from "neverthrow";
+import { err, ok, Result } from "neverthrow";
 import "./topic.ts";
-import { TopicOpenMode, TopicRead, TopicRW, type TopicAny } from "./topic.ts";
-import {
-	NetworkStreamMessage,
-	NetworkStreamMessageType,
-	NetworkTopicStream,
-} from "./network_stream.ts";
+import { TopicRead, TopicRW, type TopicAny } from "./topic.ts";
+import { NetworkStreamMessage, NetworkTopicStream } from "./network_stream.ts";
 import type {
 	NetworkDeDeclare,
 	NetworkDeUpdate,
 	NetworkSerDeclare,
 	NetworkSerUpdate,
 } from "./network_serialize.ts";
+import { network_deserialize_any_declare, type Any } from "./types.ts";
 import {
-	DataTypes,
-	network_deserialize_any_declare,
-	type Any,
-} from "./types.ts";
+	Topic_ds,
+	Topic_us,
+	zod_encode,
+	zod_parse,
+	type Topic_dt,
+	type Topic_ut,
+} from "./network_schema.ts";
+import type { TopicOpenMode_t, DataTypes_t } from "./literals.ts";
+import { NetworkStreamMessageType, TopicOpenMode } from "./literals.ts";
 
 /**
  * Information describing a topic.
@@ -27,9 +29,9 @@ export interface TopicInfo {
 	/** Name of the topic */
 	name: string;
 	/** Mode the topic can be operated under */
-	mode: TopicOpenMode;
+	mode: TopicOpenMode_t;
 	/** Type of the topic */
-	type: DataTypes;
+	type: DataTypes_t;
 	/** The declaration of the type.
 	 * Only the names & layout information are valid, all the data fields are filler values.
 	 * Reading filler data from a declaration is undefined behavior.
@@ -52,8 +54,8 @@ class TopicRegistered
 
 	constructor(
 		name: string,
-		mode: TopicOpenMode,
-		type: DataTypes,
+		mode: TopicOpenMode_t,
+		type: DataTypes_t,
 		init_or_declaration: Any,
 		init_ts?: Temporal.Instant,
 	) {
@@ -86,118 +88,59 @@ class TopicRegistered
 		);
 	}
 
-	public network_serialize_update(): string {
-		return JSON.stringify([
-			this.last_data == undefined
-				? ""
-				: this.last_data.network_serialize_update(),
-			this.last_data_ts == undefined
-				? ""
-				: String(this.last_data_ts.epochNanoseconds),
-		]);
+	public network_serialize_update(): object {
+		if (this.last_data_ts === undefined) return {} satisfies Topic_ut;
+
+		return zod_encode(Topic_us, {
+			data: this.last_data.network_serialize_update(),
+			ts_ns: this.last_data_ts?.epochNanoseconds,
+		} satisfies Topic_ut);
 	}
-	public network_deserialize_update(data: string): Result<void, string> {
-		return safeTry(
-			function* (this: TopicRegistered) {
-				let update_obj: unknown;
-				try {
-					update_obj = JSON.parse(data);
-				} catch (error) {
-					return err(`PARSE: Invalid JSON: ${String(error)}\n`);
-				}
 
-				if (!Array.isArray(update_obj))
-					return err(
-						`PARSE: Topic Update not an array: ${String(update_obj)}\n`,
-					);
-
-				const data_str: unknown = update_obj[0];
-				const ts_str: unknown = update_obj[1];
-
-				if (typeof data_str !== "string")
-					return err(
-						`PARSE: Topic Update data is not a string: ${String(data_str)}\n`,
-					);
-				if (typeof ts_str !== "string")
-					return err(
-						`PARSE: Topic Update ts is not a string: ${String(ts_str)}\n`,
-					);
-
+	public network_deserialize_update(data: object): Result<void, string> {
+		return zod_parse(Topic_us, data)
+			.andThen((t) => {
+				// Check timestamp
 				let ts: Temporal.Instant;
 				try {
-					ts = Temporal.Instant.fromEpochNanoseconds(BigInt(ts_str));
+					ts = Temporal.Instant.fromEpochNanoseconds(t.ts_ns);
 				} catch (error) {
-					return err(`PARSE: Topic Update ts invalid: ${String(error)}\n`);
+					return err(`PARSE: TopicUpdate timestamp invalid: ${String(error)}`);
 				}
 
-				// ripple update all data
-				yield* this.last_data.network_deserialize_update(data_str);
-
+				return ok({ data: t.data, ts: ts });
+			})
+			.andThrough((t) =>
+				// ripple update topics
+				this.last_data.network_deserialize_update(t.data as object),
+			)
+			.map((t) => {
 				// send topic update
-				this.update(this.last_data, ts);
-				return ok();
-			}.bind(this),
-		);
+				this.last_data_ts = t.ts;
+				this.update(this.last_data, t.ts);
+			});
 	}
 
-	public network_serialize_declare(): string {
-		return JSON.stringify([
-			this.info.name,
-			this.info.mode satisfies string,
-			this.info.type satisfies string,
-			this.info.declaration.network_serialize_declare(),
-		]);
+	public network_serialize_declare(): object {
+		return {
+			name: this.info.name,
+			mode: this.info.mode,
+			type: this.info.type,
+			declaration: this.info.declaration.network_serialize_declare(),
+		} satisfies Topic_dt;
 	}
 	public static network_deserialize_declare(
-		data: string,
+		data: object,
 	): Result<TopicRegistered, string> {
-		return safeTry(function* () {
-			let declear_obj: unknown;
-			try {
-				declear_obj = JSON.parse(data) as unknown;
-			} catch (error) {
-				return err(`PARSE: Invalid JSON: ${String(error)}\n`);
-			}
-
-			if (!Array.isArray(declear_obj))
-				return err(
-					`PARSE: Topic Declare is not an array: ${String(declear_obj)}\n`,
-				);
-
-			const name: unknown = declear_obj[0];
-			const mode: unknown = declear_obj[1];
-			const type: unknown = declear_obj[2];
-			const dec: unknown = declear_obj[3];
-
-			if (typeof name !== "string")
-				return err(
-					`PARSE: Topic Declare name is not a string: ${String(name)}\n`,
-				);
-			if (typeof mode !== "string")
-				return err(
-					`PARSE: Topic Declare mode is not a string: ${String(mode)}\n`,
-				);
-			if (typeof type !== "string")
-				return err(
-					`PARSE: Topic Declare type is not a string: ${String(type)}\n`,
-				);
-			if (typeof dec !== "string")
-				return err(
-					`PARSE: Topic Declare dec is not a string: ${String(name)}\n`,
-				);
-
-			if (!Object.values<string>(TopicOpenMode).includes(mode))
-				return err(`PARSE: Topic Declare mode unknown: ${mode}\n`);
-
-			return ok(
-				new TopicRegistered(
-					name,
-					mode as TopicOpenMode,
-					type as DataTypes,
-					yield* network_deserialize_any_declare(type, dec),
+		return zod_parse(Topic_ds, data)
+			.andThen((t) =>
+				network_deserialize_any_declare(t.type, t.declaration as object).map(
+					(r) => {
+						return { ...t, declaration: r };
+					},
 				),
-			);
-		});
+			)
+			.map((t) => new TopicRegistered(t.name, t.mode, t.type, t.declaration));
 	}
 }
 TopicRegistered satisfies NetworkDeDeclare<TopicRegistered>;
@@ -219,7 +162,7 @@ TopicRegistered satisfies NetworkDeDeclare<TopicRegistered>;
  *			if (e.m_info.name !== "Topic Name") return;
  *
  *			// get topic
- *			const topic = GDT.get_topic(e.m_info.name, TopicOpenMode.Read).match(
+ *			const topic = GDT.get_topic(e.m_info.name, TopicOpenMode_t.Read).match(
  *				(t) => t,
  *				(e) => console.log(e),
  *			);
@@ -248,11 +191,11 @@ TopicRegistered satisfies NetworkDeDeclare<TopicRegistered>;
  * ```
  *	GDT.initialize_topic(
  *		"Topic Name",
- *		TopicOpenMode.ReadWrite,
+ *		TopicOpenMode_t.ReadWrite,
  *		DataTypes.F32,
  *		F32.from(0)._unsafeUnwrap(),
  *		undefined,
- *		TopicOpenMode.Read,
+ *		TopicOpenMode_t.Read,
  *	);
  *  // Then follow instructions for subscribing / writing data
  * ```
@@ -277,7 +220,7 @@ export class GlobalDataTable extends EventTarget {
 
 		topic_stream.set_on_msg((msg) => {
 			if (msg.type === NetworkStreamMessageType.Declare) {
-				TopicRegistered.network_deserialize_declare(msg.data).match(
+				TopicRegistered.network_deserialize_declare(msg.data as object).match(
 					(t) => this.declear_new_topic(t),
 					(e) => console.log(e),
 				);
@@ -289,7 +232,7 @@ export class GlobalDataTable extends EventTarget {
 				}
 
 				const is_uninitialized = topic.last_data_ts == undefined;
-				topic.network_deserialize_update(msg.data).match(
+				topic.network_deserialize_update(msg.data as object).match(
 					() => {
 						if (is_uninitialized)
 							this.dispatchEvent(new EventTopicInitialized(topic.info));
@@ -330,20 +273,20 @@ export class GlobalDataTable extends EventTarget {
 	 */
 	public get_topic(
 		name: string,
-		mode: TopicOpenMode.Read,
-	): Result<TopicRead<Any>, Errors>;
+		mode: typeof TopicOpenMode.Read,
+	): Result<TopicRead<Any>, Errors_t>;
 	public get_topic(
 		name: string,
-		mode: TopicOpenMode.ReadWriteMany,
-	): Result<TopicRW<Any>, Errors>;
+		mode: typeof TopicOpenMode.ReadWrite,
+	): Result<TopicRW<Any>, Errors_t>;
 	public get_topic(
 		name: string,
-		mode: TopicOpenMode.ReadWrite,
-	): Result<TopicRW<Any>, Errors>;
+		mode: typeof TopicOpenMode.ReadWriteMany,
+	): Result<TopicRW<Any>, Errors_t>;
 	public get_topic(
 		name: string,
-		mode: TopicOpenMode,
-	): Result<TopicAny<Any>, Errors> {
+		mode: TopicOpenMode_t,
+	): Result<TopicAny<Any>, Errors_t> {
 		const topic = this.m_topic_registry.get(name);
 		// no topic
 		if (topic == undefined) {
@@ -414,27 +357,27 @@ export class GlobalDataTable extends EventTarget {
 	 */
 	public initialize_topic(
 		name: string,
-		mode: TopicOpenMode.Read,
-		type: DataTypes,
+		mode: "R",
+		type: DataTypes_t,
 		init_data_or_declaration: Any,
 		init_ts?: Temporal.Instant,
-		peer_mode?: TopicOpenMode,
+		peer_mode?: TopicOpenMode_t,
 	): void;
 	public initialize_topic<D extends Any>(
 		name: string,
-		mode: TopicOpenMode.ReadWrite | TopicOpenMode.ReadWriteMany,
-		type: DataTypes,
+		mode: typeof TopicOpenMode.ReadWrite | typeof TopicOpenMode.ReadWriteMany,
+		type: DataTypes_t,
 		init_data_or_declaration: D,
 		init_ts?: Temporal.Instant,
-		peer_mode?: TopicOpenMode,
+		peer_mode?: TopicOpenMode_t,
 	): TopicRW<D>;
 	public initialize_topic<D extends Any>(
 		name: string,
-		mode: TopicOpenMode,
-		type: DataTypes,
+		mode: TopicOpenMode_t,
+		type: DataTypes_t,
 		init_data_or_declaration: D,
 		init_ts?: Temporal.Instant,
-		peer_mode?: TopicOpenMode,
+		peer_mode?: TopicOpenMode_t,
 	): TopicRW<D> | void {
 		const topic = new TopicRegistered(
 			name,
@@ -457,7 +400,7 @@ export class GlobalDataTable extends EventTarget {
 				new NetworkStreamMessage(
 					name,
 					NetworkStreamMessageType.Declare,
-					init_data_or_declaration.network_serialize_declare(),
+					topic.network_serialize_declare(),
 				),
 			);
 
@@ -466,7 +409,7 @@ export class GlobalDataTable extends EventTarget {
 					new NetworkStreamMessage(
 						name,
 						NetworkStreamMessageType.Update,
-						init_data_or_declaration.network_serialize_update(),
+						topic.network_serialize_update(),
 					),
 				);
 			}
@@ -509,7 +452,7 @@ export class GlobalDataTable extends EventTarget {
 				new NetworkStreamMessage(
 					topic.info.name,
 					NetworkStreamMessageType.Update,
-					topic.last_data.network_serialize_update(),
+					topic.network_serialize_update(),
 				),
 			);
 		};
@@ -527,16 +470,17 @@ export class GlobalDataTable extends EventTarget {
 /**
  * Errors generated by GlobalDataTable
  */
-export enum Errors {
+export const Errors = {
 	/** Topic does not exist */
-	ErrNotFound,
+	ErrNotFound: "Topic Not Found",
 	/** Trying to open a read topic as write */
-	ErrNotAllowed,
+	ErrNotAllowed: "Topic is Read Only",
 	/** A readable topic don't have data yet */
-	ErrNoDataYet,
+	ErrNoDataYet: "Topic don't have data for read yet",
 	/** Too many writers open */
-	ErrTooManyOpen,
-}
+	ErrTooManyOpen: "Topic Too many writers open",
+} as const;
+export type Errors_t = (typeof Errors)[keyof typeof Errors];
 
 /**
  * Event sent when a new topic is declared
@@ -607,7 +551,7 @@ export class EventTopicDeclared extends Event {
  *
  * 		console.log("New topic initialized!");
  *
- * 		let topic = GDT.get_topic("helloworld", TopicOpenMode.Read);
+ * 		let topic = GDT.get_topic("helloworld", TopicOpenMode_t.Read);
  * 		// do something with the new topic
  *
  * });

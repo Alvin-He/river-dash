@@ -1,50 +1,71 @@
-import { err, ok, safeTry, type Result } from "neverthrow";
+import { err, ok, type Result } from "neverthrow";
 import type {
 	NetworkDeDeclare,
 	NetworkDeUpdate,
 	NetworkSerDeclare,
 	NetworkSerUpdate,
 } from "./network_serialize.ts";
+import {
+	NumberNorInteger_us,
+	type Message_dt,
+	type NumberNorInteger_ut,
+	type NumberBigInteger_ut,
+	NumberBigInteger_us,
+	NumberDecimal_us,
+	type NumberDecimal_ut,
+	Message_us,
+	type TaggedUnion_ut,
+	TaggedUnion_us,
+	type ADT_dt,
+	ADT_ds,
+	type Enum_dt,
+	Enum_ds,
+	type ADT_ut,
+	ADT_us,
+	type Group_ut,
+	Group_us,
+	type Group_d,
+	Group_ds,
+	zod_parse,
+	zod_encode,
+} from "./network_schema.ts";
+import { type DataTypes_t, DataTypes } from "./literals.ts";
 
 /**
  * Any compatible RiverDash datatype
  */
 export type Any =
-	I16 | I32 | I64 | U16 | U32 | U64 | F32 | F64 | Message | Enum | Group | ADT;
+	| I16
+	| I32
+	| I64
+	| U16
+	| U32
+	| U64
+	| F32
+	| F64
+	| Message
+	| Enum
+	| Group
+	| Record
+	| ADT;
 
-/**
- * Available underlying data types;
- */
-export enum DataTypes {
-	F32 = "F32",
-	F64 = "F64",
-	I16 = "I16",
-	I32 = "I32",
-	I64 = "I64",
-	U16 = "U16",
-	U32 = "U32",
-	U64 = "U64",
-	Message = "Message",
-	Enum = "Enum",
-	Record = "Record", // basically structs
-	Group = "Group", // basically arrays
-	ADT = "ADT", // tagged unions
-}
+// Re export literals
+export { type DataTypes_t, DataTypes } from "./literals.ts";
 
 /**
  * Automatically deserialize any data declare coming from network.
  * 	Ok if `type` is valid and data was successfully parsed.
  * 	Err if `type` is invalid or data was not successfully parsed.
  *
- * @param type the type string, matching {@link DataTypes}
+ * @param type the type string, matching {@link DataTypes_t}
  * @param data the incoming data
  * @returns the type if okay, error string if not
  */
 export function network_deserialize_any_declare(
 	type: string,
-	data: string,
+	data: object,
 ): Result<Any, string> {
-	switch (type as DataTypes) {
+	switch (type as DataTypes_t) {
 		case DataTypes.F32:
 			return F32.network_deserialize_declare(data);
 		case DataTypes.F64:
@@ -77,21 +98,23 @@ export function network_deserialize_any_declare(
 /**
  * Errors thrown by numeric types
  */
-export enum NumericError {
-	ErrNumberTooSmall,
-	ErrNumberTooBig,
-	ErrNotAnInteger,
-	ErrNotFinite,
-}
+export const NumericError = {
+	ErrNumberTooSmall: "Number is too small",
+	ErrNumberTooBig: "Number is too big",
+	ErrNotAnInteger: "Not an integer",
+	ErrNotFinite: "Not a finite number",
+} as const;
+
+export type NumericError_t = (typeof NumericError)[keyof typeof NumericError];
 
 /**
  * A number with an upper and lower bound
  *
  * `Repr` can be either number or bigint
  */
-export class NumberSized<Repr extends number | bigint>
-	implements NetworkSerUpdate, NetworkSerDeclare
-{
+export class NumberSized<
+	Repr extends number | bigint,
+> implements NetworkSerDeclare {
 	declare private m_n: Repr;
 	declare protected readonly m_max: Repr;
 	declare protected readonly m_min: Repr;
@@ -113,9 +136,9 @@ export class NumberSized<Repr extends number | bigint>
 	 * Sets the value of this number while also checking size
 	 *
 	 * @param n the value to set to
-	 * @returns Ok if success, {@link NumericError} if n out of range
+	 * @returns Ok if success, {@link NumericError_t} if n out of range
 	 */
-	public checked_set(n: Repr): Result<this, NumericError> {
+	public checked_set(n: Repr): Result<this, NumericError_t> {
 		if (n > this.m_max) return err(NumericError.ErrNumberTooBig);
 		if (n < this.m_min) return err(NumericError.ErrNumberTooSmall);
 		this.m_n = n;
@@ -123,11 +146,8 @@ export class NumberSized<Repr extends number | bigint>
 		return ok(this);
 	}
 
-	public network_serialize_declare(): string {
-		return "";
-	}
-	public network_serialize_update(): string {
-		return String(this.m_n);
+	public network_serialize_declare(): object {
+		return {} satisfies Message_dt;
 	}
 }
 
@@ -137,18 +157,23 @@ export class NumberSized<Repr extends number | bigint>
  */
 export class NumberNorInteger
 	extends NumberSized<number>
-	implements NetworkDeUpdate
+	implements NetworkDeUpdate, NetworkSerUpdate
 {
-	public override checked_set(n: number): Result<this, NumericError> {
+	public override checked_set(n: number): Result<this, NumericError_t> {
 		if (!Number.isSafeInteger(n)) return err(NumericError.ErrNotAnInteger);
 		return super.checked_set(n);
 	}
 
-	public network_deserialize_update(data: string): Result<void, string> {
-		return this.checked_set(Number(data)).mapErr((e) => e.toString()) as Result<
-			unknown,
-			string
-		> as Result<void, string>;
+	public network_deserialize_update(data: object): Result<void, string> {
+		return zod_parse(NumberNorInteger_us, data).andThen((v) =>
+			this.checked_set(v.int).mapErr((e) => String(e)),
+		) as Result<unknown, string> as Result<void, string>;
+	}
+
+	public network_serialize_update(): object {
+		return {
+			int: this.get(),
+		} satisfies NumberNorInteger_ut;
 	}
 }
 
@@ -157,20 +182,18 @@ export class NumberNorInteger
  */
 export class NumberBigInteger
 	extends NumberSized<bigint>
-	implements NetworkDeUpdate
+	implements NetworkDeUpdate, NetworkSerUpdate
 {
-	public network_deserialize_update(data: string): Result<void, string> {
-		let d;
-		try {
-			d = BigInt(data);
-		} catch (error) {
-			return err(String(error));
-		}
+	public network_deserialize_update(data: object): Result<void, string> {
+		return zod_parse(NumberBigInteger_us, data).andThen((v) =>
+			this.checked_set(v.big).mapErr((e) => String(e)),
+		) as Result<unknown, string> as Result<void, string>;
+	}
 
-		return this.checked_set(d).mapErr((e) => e.toString()) as Result<
-			unknown,
-			string
-		> as Result<void, string>;
+	public network_serialize_update(): object {
+		return zod_encode(NumberBigInteger_us, {
+			big: this.get(),
+		} satisfies NumberBigInteger_ut);
 	}
 }
 
@@ -184,18 +207,23 @@ export type NumberInteger = NumberNorInteger | NumberBigInteger;
  */
 export class NumberDecimal
 	extends NumberSized<number>
-	implements NetworkDeUpdate
+	implements NetworkDeUpdate, NetworkSerUpdate
 {
-	public override checked_set(n: number): Result<this, NumericError> {
+	public override checked_set(n: number): Result<this, NumericError_t> {
 		if (!Number.isFinite(n)) return err(NumericError.ErrNotFinite);
 		return super.checked_set(n);
 	}
 
-	public network_deserialize_update(data: string): Result<void, string> {
-		return this.checked_set(Number(data)).mapErr((e) => e.toString()) as Result<
-			unknown,
-			string
-		> as Result<void, string>;
+	public network_deserialize_update(data: object): Result<void, string> {
+		return zod_parse(NumberDecimal_us, data).andThen((v) =>
+			this.checked_set(v.decimal).mapErr((e) => String(e)),
+		) as Result<unknown, string> as Result<void, string>;
+	}
+
+	public network_serialize_update(): object {
+		return {
+			decimal: this.get(),
+		} satisfies NumberDecimal_ut;
 	}
 }
 
@@ -208,7 +236,7 @@ export class NumberDecimal
  * ```
  */
 export class I32 extends NumberNorInteger {
-	public static readonly TYPE: DataTypes = DataTypes.I32;
+	public static readonly TYPE: DataTypes_t = DataTypes.I32;
 	public static readonly MAX: number = 2 ** 31 - 1;
 	public static readonly MIN: number = -(2 ** 31);
 
@@ -222,12 +250,12 @@ export class I32 extends NumberNorInteger {
 	 * @param n the number
 	 * @returns ok if number fits within range, NumericError if not
 	 */
-	public static from(n: number): Result<I32, NumericError> {
+	public static from(n: number): Result<I32, NumericError_t> {
 		return new I32().checked_set(n);
 	}
 
 	public static network_deserialize_declare(
-		_data: string,
+		_data: object,
 	): Result<I32, string> {
 		return ok(new I32());
 	}
@@ -243,7 +271,7 @@ I32 satisfies NetworkDeDeclare<I32>;
  * ```
  */
 export class I16 extends NumberNorInteger {
-	public static readonly TYPE: DataTypes = DataTypes.I16;
+	public static readonly TYPE: DataTypes_t = DataTypes.I16;
 	public static readonly MAX: number = 2 ** 15 - 1;
 	public static readonly MIN: number = -(2 ** 15);
 
@@ -257,12 +285,12 @@ export class I16 extends NumberNorInteger {
 	 * @param n the number
 	 * @returns ok if number fits within range, NumericError if not
 	 */
-	public static from(n: number): Result<I16, NumericError> {
+	public static from(n: number): Result<I16, NumericError_t> {
 		return new I16().checked_set(n);
 	}
 
 	public static network_deserialize_declare(
-		_data: string,
+		_data: object,
 	): Result<I16, string> {
 		return ok(new I16());
 	}
@@ -278,7 +306,7 @@ I16 satisfies NetworkDeDeclare<I16>;
  * ```
  */
 export class I64 extends NumberBigInteger {
-	public static readonly TYPE: DataTypes = DataTypes.I64;
+	public static readonly TYPE: DataTypes_t = DataTypes.I64;
 	public static readonly MAX: bigint = 2n ** 63n - 1n;
 	public static readonly MIN: bigint = -(2n ** 63n);
 
@@ -292,12 +320,12 @@ export class I64 extends NumberBigInteger {
 	 * @param n the bigint
 	 * @returns ok if bigint fits within range, NumericError if not
 	 */
-	public static from(n: bigint): Result<I64, NumericError> {
+	public static from(n: bigint): Result<I64, NumericError_t> {
 		return new I64().checked_set(n);
 	}
 
 	public static network_deserialize_declare(
-		_data: string,
+		_data: object,
 	): Result<I64, string> {
 		return ok(new I64());
 	}
@@ -313,7 +341,7 @@ I64 satisfies NetworkDeDeclare<I64>;
  * ```
  */
 export class U16 extends NumberNorInteger {
-	public static readonly TYPE: DataTypes = DataTypes.U16;
+	public static readonly TYPE: DataTypes_t = DataTypes.U16;
 	public static readonly MAX: number = 2 ** 16 - 1;
 	public static readonly MIN: number = 0;
 
@@ -327,12 +355,12 @@ export class U16 extends NumberNorInteger {
 	 * @param n the number
 	 * @returns ok if number fits within range, NumericError if not
 	 */
-	public static from(n: number): Result<U16, NumericError> {
+	public static from(n: number): Result<U16, NumericError_t> {
 		return new U16().checked_set(n);
 	}
 
 	public static network_deserialize_declare(
-		_data: string,
+		_data: object,
 	): Result<U16, string> {
 		return ok(new U16());
 	}
@@ -348,7 +376,7 @@ U16 satisfies NetworkDeDeclare<U16>;
  * ```
  */
 export class U32 extends NumberNorInteger {
-	public static readonly TYPE: DataTypes = DataTypes.U32;
+	public static readonly TYPE: DataTypes_t = DataTypes.U32;
 	public static readonly MAX: number = 2 ** 32 - 1;
 	public static readonly MIN: number = 0;
 
@@ -362,12 +390,12 @@ export class U32 extends NumberNorInteger {
 	 * @param n the number
 	 * @returns ok if number fits within range, NumericError if not
 	 */
-	public static from(n: number): Result<U32, NumericError> {
+	public static from(n: number): Result<U32, NumericError_t> {
 		return new U32().checked_set(n);
 	}
 
 	public static network_deserialize_declare(
-		_data: string,
+		_data: object,
 	): Result<U32, string> {
 		return ok(new U32());
 	}
@@ -383,7 +411,7 @@ U32 satisfies NetworkDeDeclare<U32>;
  * ```
  */
 export class U64 extends NumberBigInteger {
-	public static readonly TYPE: DataTypes = DataTypes.U64;
+	public static readonly TYPE: DataTypes_t = DataTypes.U64;
 	public static readonly MAX: bigint = 2n ** 64n - 1n;
 	public static readonly MIN: bigint = 0n;
 
@@ -397,12 +425,12 @@ export class U64 extends NumberBigInteger {
 	 * @param n the bigint
 	 * @returns ok if the bigint fits within range, NumericError if not
 	 */
-	public static from(n: bigint): Result<U64, NumericError> {
+	public static from(n: bigint): Result<U64, NumericError_t> {
 		return new U64().checked_set(n);
 	}
 
 	public static network_deserialize_declare(
-		_data: string,
+		_data: object,
 	): Result<U64, string> {
 		return ok(new U64());
 	}
@@ -418,7 +446,7 @@ U64 satisfies NetworkDeDeclare<U64>;
  * ```
  */
 export class F32 extends NumberDecimal {
-	public static readonly TYPE: DataTypes = DataTypes.F32;
+	public static readonly TYPE: DataTypes_t = DataTypes.F32;
 	public static readonly MAX: number = (2 - 2 ** -23) * 2 ** 127;
 	public static readonly MIN: number = -(2 - 2 ** -23) * 2 ** 127;
 
@@ -432,12 +460,12 @@ export class F32 extends NumberDecimal {
 	 * @param n the number
 	 * @returns ok if number fits within range, NumericError if not
 	 */
-	public static from(n: number): Result<F32, NumericError> {
+	public static from(n: number): Result<F32, NumericError_t> {
 		return new F32().checked_set(n);
 	}
 
 	public static network_deserialize_declare(
-		_data: string,
+		_data: object,
 	): Result<F32, string> {
 		return ok(new F32());
 	}
@@ -455,7 +483,7 @@ F32 satisfies NetworkDeDeclare<F32>;
  * ```
  */
 export class F64 extends NumberDecimal {
-	public static readonly TYPE: DataTypes = DataTypes.F64;
+	public static readonly TYPE: DataTypes_t = DataTypes.F64;
 	// JS number is IEEE 754 binary64
 	public static readonly MAX: number = Number.MAX_VALUE;
 	public static readonly MIN: number = Number.MIN_VALUE;
@@ -470,12 +498,12 @@ export class F64 extends NumberDecimal {
 	 * @param n the number
 	 * @returns ok if number fits within range, NumericError if not
 	 */
-	public static from(n: number): Result<F64, NumericError> {
+	public static from(n: number): Result<F64, NumericError_t> {
 		return new F64().checked_set(n);
 	}
 
 	public static network_deserialize_declare(
-		_data: string,
+		_data: object,
 	): Result<F64, string> {
 		return ok(new F64());
 	}
@@ -501,7 +529,7 @@ F64 satisfies NetworkDeDeclare<F64>;
 export class Message
 	implements NetworkSerUpdate, NetworkDeUpdate, NetworkSerDeclare
 {
-	public static readonly TYPE: DataTypes = DataTypes.Message;
+	public static readonly TYPE: DataTypes_t = DataTypes.Message;
 
 	declare private m_value: string;
 
@@ -536,19 +564,20 @@ export class Message
 		this.m_value = value;
 	}
 
-	public network_serialize_update(): string {
-		return this.m_value;
+	public network_serialize_update(): object {
+		return { str: this.get() };
 	}
-	public network_deserialize_update(data: string): Result<void, string> {
-		this.m_value = data;
-		return ok();
+	public network_deserialize_update(data: object): Result<void, string> {
+		return zod_parse(Message_us, data).map((v) => {
+			this.set(v.str);
+		});
 	}
-	public network_serialize_declare(): string {
-		return "";
+	public network_serialize_declare(): object {
+		return {} satisfies Message_dt;
 	}
 
 	public static network_deserialize_declare(
-		_data: string,
+		_data: object,
 	): Result<Message, string> {
 		return ok(new Message());
 	}
@@ -650,21 +679,23 @@ export class TaggedUnion<T, TIdent>
 		return this.m_variants.get(discriminant);
 	}
 
-	public network_serialize_update(): string {
-		if (this.m_active == undefined) return "";
+	public network_serialize_update(): object {
+		if (this.m_active == undefined) return {} satisfies TaggedUnion_ut;
 
-		return String(this.m_active.discriminant);
+		return { variant: this.m_active.discriminant } satisfies TaggedUnion_ut;
 	}
-	public network_deserialize_update(data: string): Result<void, string> {
-		if (data.length == 0) this.m_active = undefined;
-
-		const d = Number(data);
-		if (!Number.isSafeInteger(d))
-			return err(`PARSE: Enum variant of ${d} is not an Integer\n`);
-		return this.set_active(d) as Result<unknown, string> as Result<
-			void,
-			string
-		>;
+	public network_deserialize_update(data: object): Result<void, string> {
+		return zod_parse(TaggedUnion_us, data).andThen((v) => {
+			if (v.variant) {
+				return this.set_active(v.variant) as Result<unknown, string> as Result<
+					void,
+					string
+				>;
+			} else {
+				this.m_active = undefined;
+				return ok();
+			}
+		});
 	}
 }
 
@@ -698,58 +729,37 @@ export interface TUVariant<T, TIdent> {
  * ```
  */
 export class Enum extends TaggedUnion<void, void> implements NetworkSerDeclare {
-	public static readonly TYPE: DataTypes = DataTypes.Enum;
-	public network_serialize_declare(): string {
-		const variants_obj: [number, string][] = [];
+	public static readonly TYPE: DataTypes_t = DataTypes.Enum;
+	public network_serialize_declare(): object {
+		const enum_dec: Enum_dt = {
+			variants: new Map(),
+		};
 
 		for (const v of this.m_variants.values()) {
-			variants_obj.push([v.discriminant, v.name]);
+			enum_dec.variants.set(v.discriminant, v.name);
 		}
 
-		return JSON.stringify(variants_obj);
+		return enum_dec;
 	}
 
 	public static network_deserialize_declare(
-		data: string,
+		data: object,
 	): Result<Enum, string> {
-		let variants_obj: unknown;
+		return zod_parse(Enum_ds, data).map((v) => {
+			const new_e = new Enum();
 
-		try {
-			variants_obj = JSON.parse(data);
-		} catch (error) {
-			return err(`PARSE: Invalid JSON: ${String(error)}\n`);
-		}
+			for (const [d, n] of v.variants.entries()) {
+				new_e.associate(d, n);
+			}
 
-		if (!Array.isArray(variants_obj))
-			return err(
-				`PARSE: Variants obj is not an array. obj: ${String(variants_obj)}`,
-			);
-
-		const new_e = new Enum();
-
-		for (const v of variants_obj) {
-			if (!Array.isArray(v))
-				return err(`PARSE: Variant is not an array. v is ${v}\n`);
-			if (v.length != 2)
-				return err(`PARSE: Variant length is not 2. l is ${v.length}\n`);
-
-			const disc = Number(v[0]);
-			const name: unknown = v[1];
-			if (!Number.isSafeInteger(disc))
-				return err(`PARSE: Invalid discriminant: ${v[0]}\n`);
-			if (typeof name !== "string")
-				return err(`PARSE: Invalid value, not a string: ${v[1]}\n`);
-
-			new_e.associate(disc, name);
-		}
-
-		return ok(new_e);
+			return new_e;
+		});
 	}
 }
 Enum satisfies NetworkDeDeclare<Enum>;
 
 /**
- * An ADT or tagged union. This is a {@link TaggedUnion} of {@link Any} and type ident {@link DataTypes}
+ * An ADT or tagged union. This is a {@link TaggedUnion} of {@link Any} and type ident {@link DataTypes_t}
  *
  * Usage:
  * ```js
@@ -765,117 +775,62 @@ Enum satisfies NetworkDeDeclare<Enum>;
  * ```
  */
 export class ADT
-	extends TaggedUnion<Any, DataTypes>
+	extends TaggedUnion<Any, DataTypes_t>
 	implements NetworkSerDeclare
 {
-	public static readonly TYPE: DataTypes = DataTypes.ADT;
+	public static readonly TYPE: DataTypes_t = DataTypes.ADT;
 
-	public network_serialize_declare(): string {
-		const variants_obj: [number, string, string, string][] = [];
+	public network_serialize_declare(): object {
+		const adt_dec: ADT_dt = {
+			variants: new Map(),
+		};
 
 		for (const v of this.m_variants.values()) {
-			variants_obj.push([
-				v.discriminant,
-				v.name,
-				v.type satisfies string,
-				v.value.network_serialize_declare(),
-			]);
+			adt_dec.variants.set(v.discriminant, {
+				name: v.name,
+				type: v.type,
+				value: v.value.network_serialize_declare(),
+			});
 		}
 
-		return JSON.stringify(variants_obj);
+		return adt_dec;
 	}
 
-	public static network_deserialize_declare(data: string): Result<ADT, string> {
-		return safeTry(function* () {
-			let variants_obj: unknown;
-
-			try {
-				variants_obj = JSON.parse(data);
-			} catch (error) {
-				return err(`PARSE: Invalid JSON: ${String(error)}\n`);
-			}
-
-			if (!Array.isArray(variants_obj))
-				return err(
-					`PARSE: Variants obj is not an array. obj: ${String(variants_obj)}`,
-				);
-
+	public static network_deserialize_declare(data: object): Result<ADT, string> {
+		return zod_parse(ADT_ds, data).andThen((v) => {
 			const new_adt = new ADT();
 
-			for (const v of variants_obj) {
-				if (!Array.isArray(v))
-					return err(`PARSE: Variant is not an array. v is ${v}\n`);
-				if (v.length != 2)
-					return err(`PARSE: Variant length is not 2. l is ${v.length}\n`);
+			for (const [d, e] of v.variants) {
+				const inner_raw = network_deserialize_any_declare(
+					e.type,
+					e.value as object,
+				);
+				if (inner_raw.isErr()) return err(inner_raw._unsafeUnwrapErr());
 
-				const dis = Number(v[0]);
-				const name: unknown = v[1];
-				const type: unknown = v[2];
-				const data: unknown = v[3];
-				if (!Number.isSafeInteger(dis))
-					return err(`PARSE: Invalid discriminant: ${v[0]}\n`);
-				if (typeof name !== "string")
-					return err(`PARSE: Invalid name, not a string: ${String(name)}\n`);
-				if (typeof type !== "string")
-					return err(`PARSE: Invalid type, not a string: ${String(type)}\n`);
-				if (typeof data !== "string")
-					return err(`PARSE: Invalid data, not a string: ${String(data)}\n`);
-
-				const value = yield* network_deserialize_any_declare(type, data);
-				// type is guaranteed to be DataTypes at this point
-				new_adt.associate(dis, name, value, type as DataTypes);
+				new_adt.associate(d, e.name, inner_raw._unsafeUnwrap(), e.type);
 			}
 
 			return ok(new_adt);
 		});
 	}
 
-	public override network_serialize_update(): string {
-		return JSON.stringify([
-			super.network_serialize_update(),
-			this.m_active == undefined
-				? ""
-				: this.m_active.value.network_serialize_update(),
-		]);
+	public override network_serialize_update(): object {
+		return {
+			...super.network_serialize_update(),
+			value: this.m_active?.value.network_serialize_update(),
+		} satisfies ADT_ut;
 	}
 
 	public override network_deserialize_update(
-		data: string,
+		data: object,
 	): Result<void, string> {
-		const super_deserialize = super.network_deserialize_update.bind(this);
-		return safeTry(
-			function* (this: ADT) {
-				let update_obj: unknown;
-				try {
-					update_obj = JSON.parse(data);
-				} catch (error) {
-					return err(`PARSE: Invalid JSON: ${String(error)}\n`);
-				}
-
-				if (!Array.isArray(update_obj))
-					return err(`PARSE: Invalid update obj: ${String(update_obj)}\n`);
-				if (update_obj.length !== 2)
-					return err(`PARSE: Invalid update obj len: ${update_obj.length}\n`);
-
-				const dis: unknown = update_obj[0];
-				const val: unknown = update_obj[1];
-
-				if (typeof dis !== "string")
-					return err(
-						`PARSE: Invalid discriminator, not a string: ${String(dis)}`,
-					);
-				if (typeof val !== "string")
-					return err(`PARSE: Invalid value, not a string: ${String(val)}\n`);
-
-				yield* super_deserialize(dis);
-
-				if (this.m_active != undefined) {
-					yield* this.m_active.value.network_deserialize_update(val);
-				}
-
-				return ok();
-			}.bind(this),
-		);
+		return zod_parse(ADT_us, data)
+			.andThrough((t) => super.network_deserialize_update(t))
+			.andThen((t) => {
+				if (t.value && this.m_active)
+					return this.m_active.value.network_deserialize_update(t.value);
+				else return ok();
+			});
 	}
 }
 ADT satisfies NetworkDeDeclare<ADT>;
@@ -899,7 +854,7 @@ export class Group
 	extends Array<ValueNamed<Any>>
 	implements NetworkSerDeclare, NetworkSerUpdate, NetworkDeUpdate
 {
-	public static readonly TYPE: DataTypes = DataTypes.Group;
+	public static readonly TYPE: DataTypes_t = DataTypes.Group;
 
 	/**
 	 * Create a new Group
@@ -939,99 +894,75 @@ export class Group
 	 * @param type the type of value
 	 * @returns `this` for method chaining
 	 */
-	public add_value(value: Any, name: string, type: DataTypes): Group {
+	public add_value(value: Any, name: string, type: DataTypes_t): Group {
 		this.push({ value, name, type });
 		return this;
 	}
 
-	public network_serialize_declare(): string {
-		const declare_obj = new Array<[string, string, string]>();
+	public network_serialize_declare(): object {
+		const group_d: Group_d = [];
 
 		for (const i of this) {
-			declare_obj.push([i.name, i.type, i.value.network_serialize_declare()]);
+			group_d.push({
+				name: i.name,
+				type: i.type,
+				value: i.value.network_serialize_declare(),
+			});
 		}
 
-		return JSON.stringify(declare_obj);
+		return group_d;
 	}
+
 	public static network_deserialize_declare(
-		data: string,
+		data: object,
 	): Result<Group, string> {
-		return safeTry(function* () {
-			let declare_obj: unknown;
-			try {
-				declare_obj = JSON.parse(data);
-			} catch (error) {
-				return err(`PARSE: Invalid JSON: ${String(error)}\n`);
-			}
-
-			if (!Array.isArray(declare_obj))
-				return err(
-					`PARSE: Invalid Group Decl, not an array: ${String(declare_obj)}`,
-				);
-
+		return zod_parse(Group_ds, data).andThen((v) => {
 			const new_group = new Group();
 
-			for (const [name, type, value] of declare_obj) {
-				if (typeof name !== "string")
-					return err(`PARSE: Invalid Name, not a string: ${name}\n`);
-				if (typeof type !== "string")
-					return err(`PARSE: Invalid Type, not a string: ${type}\n`);
-				if (typeof value !== "string")
-					return err(`PARSE: Invalid Value, not a string: ${value}\n`);
+			for (const i of v) {
+				const r = network_deserialize_any_declare(
+					i.type,
+					i.value as object,
+				).andTee((v) => new_group.add_value(v, i.name, i.type));
 
-				new_group.add_value(
-					yield* network_deserialize_any_declare(type, value),
-					name,
-					type as DataTypes, // type must be valid at this point
-				);
+				if (r.isErr()) return r as Result<Group, string>;
 			}
 
 			return ok(new_group);
 		});
 	}
 
-	public network_serialize_update(): string {
-		const update_obj = new Array<string>();
+	public network_serialize_update(): object {
+		const update_obj: Group_ut = [];
 
 		for (const i of this) {
 			update_obj.push(i.value.network_serialize_update());
 		}
 
-		return JSON.stringify(update_obj);
+		return update_obj;
 	}
-	public network_deserialize_update(data: string): Result<void, string> {
-		return safeTry(
-			function* (this: Group) {
-				let update_obj: unknown;
-				try {
-					update_obj = JSON.parse(data);
-				} catch (error) {
-					return err(`PARSE: Invalid JSON: ${String(error)}\n`);
-				}
 
-				if (!Array.isArray(update_obj))
+	public network_deserialize_update(data: object): Result<void, string> {
+		return zod_parse(Group_us, data).andThen((v) => {
+			if (this.length !== v.length)
+				return err(
+					`PARSE: Group Update Arr length mismatch: ${this.length}, ${v.length}`,
+				);
+
+			for (let i = 0; i < this.length; i++) {
+				const r = this[i]?.value.network_deserialize_update(
+					(v[i] as object) ?? new Object(), // new object should be unreachable
+				);
+
+				if (r === undefined)
 					return err(
-						`PARSE: Group Update is not an array: ${String(update_obj)}`,
+						"Unreachable has been reached -- types.ts/network_deserialize_update",
 					);
-				if (update_obj.length !== self.length)
-					return err(
-						`PARSE: Group Update Obj length mismatch: ${update_obj.length}, ${self.length}`,
-					);
+				if (r.isErr()) return err(r.error);
+			}
 
-				for (let i = 0; i < update_obj.length; i++) {
-					const v: unknown = update_obj[i];
-					if (typeof v !== "string")
-						return err(`PARSE: Group Update Value is not string: ${i}\n`);
-
-					const value = this[i]?.value;
-					if (value == undefined)
-						throw new Error("Unreachable - Group - network_deserialize_update");
-					yield* value.network_deserialize_update(v);
-				}
-
-				return ok();
-			}.bind(this),
-		);
+			return ok();
+		});
 	}
 }
 Group satisfies NetworkDeDeclare<Group>;
@@ -1045,7 +976,7 @@ export interface ValueNamed<Data extends Any> {
 	/** The name of this value */
 	name: string;
 	/** the type of this value */
-	type: DataTypes;
+	type: DataTypes_t;
 }
 
 /**
@@ -1061,5 +992,5 @@ export interface ValueNamed<Data extends Any> {
  * ```
  */
 export class Record extends Group {
-	public static override readonly TYPE: DataTypes = DataTypes.Record;
+	public static override readonly TYPE: DataTypes_t = DataTypes.Record;
 }

@@ -3,60 +3,47 @@ import type {
 	NetworkDeDeclare,
 	NetworkSerDeclare,
 } from "./network_serialize.ts";
+import {
+	NetworkStreamMessage_s,
+	zod_parse,
+	type NetworkStreamMessage_st,
+} from "./network_schema.ts";
+import type { NetworkStreamMessageType_t } from "./literals.ts";
 
-export enum NetworkStreamMessageType {
-	Declare = "D",
-	Update = "U",
-}
+// Reexport literals
+export type {
+	NetworkStreamMessageType,
+	NetworkStreamMessageType_t,
+} from "./literals.ts";
 
 export class NetworkStreamMessage implements NetworkSerDeclare {
 	declare public name: string;
-	declare public type: NetworkStreamMessageType;
-	declare public data: string;
+	declare public type: NetworkStreamMessageType_t;
+	declare public data: unknown;
 
 	public constructor(
 		name: string,
-		type: NetworkStreamMessageType,
-		data: string,
+		type: NetworkStreamMessageType_t,
+		data: unknown,
 	) {
 		this.name = name;
 		this.type = type;
 		this.data = data;
 	}
 
-	public network_serialize_declare(): string {
-		return JSON.stringify([this.name, this.type as string, this.data]);
+	public network_serialize_declare(): object {
+		return {
+			name: this.name,
+			type: this.type,
+			data: this.data,
+		} satisfies NetworkStreamMessage_st;
 	}
 
 	public static network_deserialize_declare(
-		data: string,
+		data: object,
 	): Result<NetworkStreamMessage, string> {
-		let data_obj: unknown;
-		try {
-			data_obj = JSON.parse(data);
-		} catch (error) {
-			return err(`PARSE: Invalid JSON: ${String(error)}\n`);
-		}
-
-		if (!Array.isArray(data_obj))
-			return err(`PARSE: Msg body is not an array: ${String(data_obj)}\n`);
-
-		const name: unknown = data_obj[0];
-		const type: unknown = data_obj[1];
-		const value: unknown = data_obj[2];
-
-		if (typeof name !== "string")
-			return err(`PARSE: Msg Name is not a string: ${String(name)}\n`);
-		if (typeof type !== "string")
-			return err(`PARSE: Msg type is not a string: ${String(type)}\n`);
-		if (typeof value !== "string")
-			return err(`PARSE: Msg data is not a string: ${String(value)}\n`);
-
-		if (!Object.values<string>(NetworkStreamMessageType).includes(type))
-			return err(`PARSE: Msg type is unknown: ${type}\n`);
-
-		return ok(
-			new NetworkStreamMessage(name, type as NetworkStreamMessageType, value),
+		return zod_parse(NetworkStreamMessage_s, data).map(
+			(t) => new NetworkStreamMessage(t.name, t.type, t.data),
 		);
 	}
 }
@@ -69,9 +56,18 @@ export class NetworkTopicStream extends EventTarget {
 		super();
 	}
 
-	public stream_send_message(msg: NetworkStreamMessage): Result<null, Error> {
+	public stream_send_message(
+		msg: NetworkStreamMessage,
+	): Result<null, Error | string> {
+		let serialized: string;
+		try {
+			serialized = JSON.stringify(msg.network_serialize_declare());
+		} catch (error: unknown) {
+			return err(`Serialize: ${String(error)}`);
+		}
+
 		console.log("Stream message", msg);
-		console.log("Serialized: ", msg.network_serialize_declare());
+		console.log("Serialized: ", serialized);
 
 		return ok(null);
 	}
@@ -83,6 +79,7 @@ export class NetworkTopicStream extends EventTarget {
 
 export type StreamMsgCallback = (message: NetworkStreamMessage) => void;
 
-export enum Error {
-	NotConnected,
-}
+export const Error = {
+	NotConnected: "Not Connected",
+} as const;
+export type Error_t = (typeof Error)[keyof typeof Error];
