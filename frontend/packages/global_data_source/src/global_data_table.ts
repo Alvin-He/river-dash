@@ -93,23 +93,12 @@ class TopicRegistered
 
 		return zod_encode(Topic_us, {
 			data: this.last_data.network_serialize_update(),
-			ts_ns: this.last_data_ts?.epochNanoseconds,
+			ts: this.last_data_ts,
 		} satisfies Topic_ut);
 	}
 
 	public network_deserialize_update(data: object): Result<void, string> {
 		return zod_parse(Topic_us, data)
-			.andThen((t) => {
-				// Check timestamp
-				let ts: Temporal.Instant;
-				try {
-					ts = Temporal.Instant.fromEpochNanoseconds(t.ts_ns);
-				} catch (error) {
-					return err(`PARSE: TopicUpdate timestamp invalid: ${String(error)}`);
-				}
-
-				return ok({ data: t.data, ts: ts });
-			})
 			.andThrough((t) =>
 				// ripple update topics
 				this.last_data.network_deserialize_update(t.data as object),
@@ -340,14 +329,14 @@ export class GlobalDataTable extends EventTarget {
 	 * Initializes a new topic
 	 *
 	 * @template D Optional - the data type of the topic. Undefined behavior if D is
-	 * 	specified but does not match {@link type}
+	 * 	specified but does not match `type`
 	 *
 	 * @param name the name of the new topic
 	 * @param mode the mode of the topic
 	 * @param type the type of the topic
 	 * @param init_data_or_declaration Initial data or declaration of type contents
 	 * @param init_ts Optional - Initial timestamp.
-	 * 	If provided then {@link init_data_or_declaration} is treated as an init.
+	 * 	If provided then `init_data_or_declaration` is treated as an init.
 	 * 	Otherwise it is a declaration.
 	 * @param peer_mode Optional - Peer Access mode.
 	 * 	If specified, this topic is declared across the network
@@ -357,7 +346,7 @@ export class GlobalDataTable extends EventTarget {
 	 */
 	public initialize_topic(
 		name: string,
-		mode: "R",
+		mode: typeof TopicOpenMode.Read,
 		type: DataTypes_t,
 		init_data_or_declaration: Any,
 		init_ts?: Temporal.Instant,

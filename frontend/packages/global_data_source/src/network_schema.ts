@@ -28,11 +28,6 @@ export function zod_encode<S extends zod.ZodType, T extends zod.infer<S>>(
 	return zod.encode(schema, value) as object;
 }
 
-// const BigIntToString = zod.codec(zod.bigint(), zod.string(), {
-// 	encode: (str) => BigInt(str),
-// 	decode: (bigint) => bigint.toString(),
-// });
-
 const stringToBigInt = zod.codec(zod.string(), zod.bigint(), {
 	decode: (s, ctx) => {
 		try {
@@ -50,19 +45,27 @@ const stringToBigInt = zod.codec(zod.string(), zod.bigint(), {
 	encode: (b) => String(b),
 });
 
-// const BigIntTransformed = zod.string().transform((s, ctx) => {
-// 	try {
-// 		return BigInt(s);
-// 	} catch (error: unknown) {
-// 		ctx.issues.push({
-// 			code: "invalid_format",
-// 			format: "bigint",
-// 			input: s,
-// 			message: String(error),
-// 		});
-// 		return zod.NEVER;
-// 	}
-// });
+const bigintToTemporal = zod.codec(
+	stringToBigInt,
+	zod.instanceof(Temporal.Instant),
+	{
+		decode: (b, ctx) => {
+			try {
+				return Temporal.Instant.fromEpochNanoseconds(b);
+			} catch (error: unknown) {
+				ctx.issues.push({
+					code: "invalid_format",
+					format: "time_ns",
+					input: String(b),
+					message: String(error),
+				});
+
+				return zod.NEVER;
+			}
+		},
+		encode: (t) => t.epochNanoseconds,
+	},
+);
 
 export const NumberSized_ds = zod.object({});
 export type NumberSized_dt = zod.infer<typeof NumberSized_ds>;
@@ -132,7 +135,7 @@ export type Group_ut = zod.infer<typeof Group_us>;
 export const Topic_us = zod.union([
 	zod.object({
 		data: zod.unknown(),
-		ts_ns: stringToBigInt,
+		ts: bigintToTemporal,
 	}),
 	zod.object({}),
 ]);
