@@ -6,9 +6,10 @@ import {
 	GlobalDataTable,
 } from "../global_data_table.ts";
 import { NetworkTopicStream } from "../network_stream.ts";
-import { TopicOpenMode, TopicRW } from "../topic.ts";
-import { DataTypes, I32, U32 } from "../types.ts";
 import { err } from "neverthrow";
+import { TopicOpenMode, DataTypes } from "../literals.ts";
+import type { TopicRW } from "../topic.ts";
+import { I32, U32 } from "../types.ts";
 
 describe(GlobalDataTable, () => {
 	const gdt = new GlobalDataTable(new NetworkTopicStream());

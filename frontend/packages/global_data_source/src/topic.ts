@@ -5,14 +5,8 @@ import type { Any } from "./types.ts";
 // Interface Declarations
 //
 
-/**
- * Modes a topic can be opened under
- */
-export enum TopicOpenMode {
-	Read = "R",
-	ReadWrite = "RW",
-	ReadWriteMany = "RWM",
-}
+// Reexport literals
+export type { TopicOpenMode, TopicOpenMode_t } from "./literals.ts";
 
 /**
  * This is the base interface for a Topic. A topic is a reference to a data stream  

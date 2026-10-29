@@ -4,7 +4,7 @@ export interface NetworkSerDeclare {
 	/**
 	 * Serialize the current object as a declaration.
 	 */
-	network_serialize_declare(): string;
+	network_serialize_declare(): object;
 }
 
 export interface NetworkDeDeclare<Self> {
@@ -15,14 +15,14 @@ export interface NetworkDeDeclare<Self> {
 	 *
 	 * @param data the incoming data
 	 */
-	network_deserialize_declare(data: string): Result<Self, string>;
+	network_deserialize_declare(data: object): Result<Self, string>;
 }
 
 export interface NetworkSerUpdate {
 	/**
 	 * Serialize this object's information for and update
 	 */
-	network_serialize_update(): string;
+	network_serialize_update(): object;
 }
 
 export interface NetworkDeUpdate {
@@ -30,5 +30,5 @@ export interface NetworkDeUpdate {
 	 * Deserialize the update and apply the update to this object.
 	 * @param data the incoming data
 	 */
-	network_deserialize_update(data: string): Result<void, string>;
+	network_deserialize_update(data: object): Result<void, string>;
 }

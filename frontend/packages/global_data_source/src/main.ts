@@ -2,7 +2,7 @@ import "./topic.ts";
 import "./global_data_table.ts";
 import { GDT } from "./global_data_table.ts";
 import * as RiverDashTypes from "./types.ts";
-import { TopicOpenMode } from "./topic.ts";
+import { TopicOpenMode } from "./literals.ts";
 
 function test() {
 	const _a = GDT.get_topic("hello", TopicOpenMode.Read).match(
