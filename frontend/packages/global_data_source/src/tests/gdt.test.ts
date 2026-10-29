@@ -25,7 +25,7 @@ describe(GlobalDataTable, () => {
 	let b_init: TopicRW<I32>;
 	let c_init: TopicRW<U32>;
 
-	test("Initializing Topic", () => {
+	test("Initializing Topic - Topic Declare Event ", () => {
 		const cb = vi.fn((e: EventTopicDeclared) => {
 			expect(e.m_info.name).toBe("a");
 			expect(e.m_info.mode).toBe(TopicOpenMode.Read);
@@ -50,7 +50,9 @@ describe(GlobalDataTable, () => {
 			EventTopicDeclared.TYPE,
 			cb as unknown as (e: Event) => void,
 		);
+	});
 
+	test("Initializing Topic - RW ", () => {
 		b_init = gdt.initialize_topic(
 			"b",
 			TopicOpenMode.ReadWriteMany,
@@ -82,28 +84,30 @@ describe(GlobalDataTable, () => {
 		).toEqual(["a", "b", "c"]);
 	});
 
-	test("Getting, Setting & Updating Topic", () => {
-		// failure to open modes
-		expect(gdt.get_topic("a", TopicOpenMode.Read)).toEqual(
-			err(Errors.ErrNoDataYet),
-		);
+	test("Access Perm enforcement", () => {
 		expect(gdt.get_topic("a", TopicOpenMode.ReadWriteMany)).toEqual(
 			err(Errors.ErrNotAllowed),
 		);
 		expect(gdt.get_topic("a", TopicOpenMode.ReadWrite)).toEqual(
 			err(Errors.ErrNotAllowed),
 		);
+	});
 
-		// b initialize cb
-		const cb = vi.fn((e: EventTopicInitialized) => {
-			expect(e.m_info.name).toBe("b");
-			expect(e.m_info.mode).toEqual(TopicOpenMode.ReadWriteMany);
-			expect(e.m_info.type).toEqual(DataTypes.I32);
-			expect(e.m_info.declaration).toBe(d2);
-		});
-		EventTopicInitialized.add_listener_to(gdt, cb);
+	test("Single writer enforcement", () => {
+		expect(gdt.get_topic("c", TopicOpenMode.ReadWrite)).toEqual(
+			err(Errors.ErrTooManyOpen),
+		);
+		expect(gdt.get_topic("c", TopicOpenMode.ReadWriteMany)).toEqual(
+			err(Errors.ErrTooManyOpen),
+		);
+	});
 
-		// able to open b cuz no data
+	test("No Data No open", () => {
+		// failure to open modes
+		expect(gdt.get_topic("a", TopicOpenMode.Read)).toEqual(
+			err(Errors.ErrNoDataYet),
+		);
+
 		expect(gdt.get_topic("b", TopicOpenMode.Read)).toEqual(
 			err(Errors.ErrNoDataYet),
 		);
@@ -113,9 +117,36 @@ describe(GlobalDataTable, () => {
 		expect(gdt.get_topic("b", TopicOpenMode.ReadWriteMany)).toEqual(
 			err(Errors.ErrNoDataYet),
 		);
+
+		expect(gdt.get_topic("c", TopicOpenMode.Read).isOk()).toBeTruthy();
+	});
+
+	test("Init topic data", () => {
+		// b initialize cb
+		const cb = vi.fn((e: EventTopicInitialized) => {
+			expect(e.m_info.name).toBe("b");
+			expect(e.m_info.mode).toEqual(TopicOpenMode.ReadWriteMany);
+			expect(e.m_info.type).toEqual(DataTypes.I32);
+			expect(e.m_info.declaration).toBe(d2);
+		});
+		EventTopicInitialized.add_listener_to(gdt, cb);
+
 		b_init.write_data_ts(d2, t1);
 		expect(gdt.get_topic("b", TopicOpenMode.Read).isOk()).toBeTruthy();
 		expect(gdt.get_topic("b", TopicOpenMode.ReadWrite).isOk()).toBeTruthy();
+		expect(gdt.get_topic("b", TopicOpenMode.ReadWriteMany).isOk()).toBeTruthy();
+
+		// this call should not have generated a init cb
+		c_init.write_data_ts(d3, t1);
+
+		expect(cb).toHaveBeenCalledOnce();
+		gdt.removeEventListener(
+			EventTopicInitialized.TYPE,
+			cb as unknown as (e: Event) => void,
+		);
+	});
+
+	test("Write Topic & Read out new data", () => {
 		const b_rwm = gdt
 			.get_topic("b", TopicOpenMode.ReadWriteMany)
 			._unsafeUnwrap();
@@ -123,23 +154,26 @@ describe(GlobalDataTable, () => {
 
 		// successful data write on W instance and open & read on R
 		b_rwm.write_data_ts(d2, t2);
+		expect(gdt.get_topic("b", TopicOpenMode.Read).isOk()).toBeTruthy();
 		const b_r = gdt.get_topic("b", TopicOpenMode.Read)._unsafeUnwrap();
 		expect(b_r.try_read_new_data()).toBe(d2);
+	});
 
-		// successfully open c in R, no RW or RWM due to too many open
+	test("Read Initial Init data", () => {
+		expect(gdt.get_topic("c", TopicOpenMode.Read).isOk()).toBeTruthy();
 		const c_r = gdt.get_topic("c", TopicOpenMode.Read)._unsafeUnwrap();
-		expect(gdt.get_topic("c", TopicOpenMode.ReadWrite)).toEqual(
-			err(Errors.ErrTooManyOpen),
-		);
-		expect(gdt.get_topic("c", TopicOpenMode.ReadWriteMany)).toEqual(
-			err(Errors.ErrTooManyOpen),
-		);
 
 		// able to read initial initialized data
 		expect(c_r.try_read_new_data()).toBe(d3);
 		expect(c_r.get_last_update_time()).toBe(t1);
 		expect(c_init.try_read_new_data()).toBe(d3);
 		expect(c_init.get_last_update_time()).toBe(t1);
+	});
+
+	test("RW write & read", () => {
+		// successfully open c in R
+		expect(gdt.get_topic("c", TopicOpenMode.Read).isOk()).toBeTruthy();
+		const c_r = gdt.get_topic("c", TopicOpenMode.Read)._unsafeUnwrap();
 
 		// able to update data from RW and read from R & RW
 		c_init.write_data_ts(U32.from(d3.get() + 20)._unsafeUnwrap(), t2);
@@ -151,13 +185,5 @@ describe(GlobalDataTable, () => {
 			U32.from(d3.get() + 20)._unsafeUnwrap(),
 		);
 		expect(c_init.get_last_update_time()).toBe(t2);
-
-		// initialize cb should've only been called once for b initialization
-		//  (a un-init, c pre-init)
-		expect(cb).toHaveBeenCalledOnce();
-		gdt.removeEventListener(
-			EventTopicInitialized.TYPE,
-			cb as unknown as (e: Event) => void,
-		);
 	});
 });

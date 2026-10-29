@@ -35,7 +35,7 @@ export interface TopicTraitRead<Data> extends TopicBase<Data>, EventTarget {
 	 * Reads data from this Topic. This data may be stale since the Topic was last
 	 *  updated.  
 	 *
-	 * Get staleness using {@link TopicTraitRead.get_last_update_time}.
+	 * Get staleness using {@link get_last_update_time}.
 	 */
 	read_data(): Data;
 	/**
