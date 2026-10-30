@@ -447,7 +447,7 @@ export class GlobalDataTable extends EventTarget {
 		};
 	}
 
-	// called when adding a new topic ot the registry
+	// called when adding a new topic to the registry
 	private declear_new_topic(entry: TopicRegistered) {
 		this.m_topic_infos.set(entry.info.name, entry.info);
 		this.m_topic_registry.set(entry.info.name, entry);
