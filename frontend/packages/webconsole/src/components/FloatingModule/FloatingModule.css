@@ -1,0 +1,4 @@
+/* react-rnd positions each module inside DashboardCanvas's relative surface. */
+.floating-module {
+	position: absolute;
+}

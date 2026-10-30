@@ -1,73 +1,31 @@
-# React + TypeScript + Vite
+# River Dash webconsole
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React, TypeScript, Vite, and `react-rnd` frontend for the NILE test-stand dashboard.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+From `frontend/`, install dependencies with `npm install`, then use the `webconsole` workspace:
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-	globalIgnores(["dist"]),
-	{
-		files: ["**/*.{ts,tsx}"],
-		extends: [
-			// Other configs...
-
-			// Remove tseslint.configs.recommended and replace with this
-			tseslint.configs.recommendedTypeChecked,
-			// Alternatively, use this for stricter rules
-			tseslint.configs.strictTypeChecked,
-			// Optionally, add this for stylistic rules
-			tseslint.configs.stylisticTypeChecked,
-
-			// Other configs...
-		],
-		languageOptions: {
-			parserOptions: {
-				project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-				tsconfigRootDir: import.meta.dirname,
-			},
-			// other options...
-		},
-	},
-]);
+```sh
+npm run dev --workspace=webconsole
+npm run build --workspace=webconsole
+npm run lint --workspace=webconsole
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+During development, `/login` provides a mock sign-in and `/dashboard` shows the console. The mock authentication behavior and its security limitations are documented in [AUTH_DEVELOPMENT.md](./AUTH_DEVELOPMENT.md).
 
-```js
-// eslint.config.js
-import reactX from "eslint-plugin-react-x";
-import reactDom from "eslint-plugin-react-dom";
+## Dashboard modules and layout
 
-export default defineConfig([
-	globalIgnores(["dist"]),
-	{
-		files: ["**/*.{ts,tsx}"],
-		extends: [
-			// Other configs...
-			// Enable lint rules for React
-			reactX.configs["recommended-typescript"],
-			// Enable lint rules for React DOM
-			reactDom.configs.recommended,
-		],
-		languageOptions: {
-			parserOptions: {
-				project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-				tsconfigRootDir: import.meta.dirname,
-			},
-			// other options...
-		},
-	},
-]);
-```
+`src/components/DashboardCanvas/DashboardCanvas.tsx` registers visible modules. Layout geometry, snapping, and resize constraints are implemented in `src/layout/dashboardLayout.ts` and orchestrated by `src/layout/useDashboardLayout.ts`.
+
+- [Module authoring](./src/modules/README.md)
+- [Shared component contracts](./src/components/README.md)
+- [Layout behavior and registration](./src/layout/README.md)
+- [Repository-wide module developer guide](../../../MODULE_DEVELOPER_GUIDE.md)
+
+The dashboard fills its browser window. Its default geometry uses a 1920 × 1080 reference; smaller windows adapt panel sizes and reflow when minimum panel dimensions require it.
+The header currently displays a hard-coded connection/rate label; it does not indicate verified live connectivity or a measured telemetry frequency.
+
+## Fullscreen
+
+On `/dashboard`, the header's **Full screen** button requests fullscreen for the dashboard. **Exit full screen** or **Esc** returns to the windowed view. The button is disabled if the browser does not expose the Fullscreen API, and the interface displays an error if the request fails. Fullscreen changes viewport sizing but does not reset the committed module layout.

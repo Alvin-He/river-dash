@@ -1,0 +1,257 @@
+.page {
+	min-height: 100svh;
+	width: 100%;
+	display: grid;
+	place-items: center;
+	padding: 48px 20px;
+	background: var(--color-canvas);
+	color: var(--color-text-primary);
+	text-align: left;
+}
+
+.center {
+	width: min(100%, 440px);
+}
+
+.brand {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 32px;
+}
+
+.brandMark {
+	width: 39px;
+	height: 39px;
+	display: grid;
+	place-items: center;
+	border-radius: 6px;
+	background: var(--color-accent);
+	color: var(--color-canvas);
+	font-weight: 800;
+	font-size: 23px;
+}
+
+.brandText {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.brandText strong {
+	font-size: 14px;
+	letter-spacing: 0.075em;
+}
+
+.brandText span {
+	font-size: 10px;
+	letter-spacing: 0.12em;
+	color: var(--color-text-muted);
+}
+
+.card {
+	padding: 34px;
+	background: var(--color-panel);
+	border: 1px solid var(--color-border);
+	border-radius: 10px;
+	box-shadow: 0 14px 48px rgb(0 0 0 / 18%);
+}
+
+.cardHeading {
+	margin-bottom: 28px;
+}
+
+.eyebrow {
+	margin-bottom: 10px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.11em;
+	color: var(--color-accent);
+}
+
+.card h1 {
+	margin: 0 0 9px;
+	font-size: 30px;
+	line-height: 1.2;
+	letter-spacing: -0.7px;
+	font-weight: 650;
+	color: var(--color-text-primary);
+}
+
+.description {
+	font-size: 13px;
+	line-height: 1.55;
+	color: var(--color-text-secondary);
+}
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: 9px;
+	margin-bottom: 20px;
+}
+
+.field label {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--color-text-primary);
+}
+
+.field input {
+	width: 100%;
+	height: 44px;
+	border: 1px solid var(--color-border);
+	border-radius: 5px;
+	background: var(--color-canvas);
+	color: var(--color-text-primary);
+	padding: 0 13px;
+	font: inherit;
+	font-size: 13px;
+	letter-spacing: 0;
+	outline: none;
+	transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.passwordInput {
+	position: relative;
+}
+
+.passwordInput input {
+	padding-right: 64px;
+}
+
+.passwordToggle {
+	position: absolute;
+	right: 12px;
+	top: 50%;
+	transform: translateY(-50%);
+	border: 0;
+	background: transparent;
+	padding: 5px;
+	color: var(--color-accent);
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.passwordToggle:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: 2px;
+}
+
+.field input::placeholder {
+	color: var(--color-text-muted);
+}
+
+.field input:focus-visible {
+	border-color: var(--color-accent);
+	box-shadow: 0 0 0 3px rgb(242 140 40 / 15%);
+}
+
+.field input[aria-invalid="true"] {
+	border-color: var(--color-error);
+}
+
+.error {
+	margin: -3px 0 17px;
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--color-error);
+}
+
+.submit {
+	width: 100%;
+	height: 45px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 11px;
+	margin-top: 6px;
+	border: 1px solid transparent;
+	border-radius: 5px;
+	background: var(--color-accent);
+	color: var(--color-canvas);
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: filter 120ms ease;
+}
+
+.submit:hover {
+	filter: brightness(1.1);
+}
+
+.submit:focus-visible {
+	outline: 2px solid var(--color-text-primary);
+	outline-offset: 3px;
+}
+
+.devPanel {
+	margin-top: 18px;
+	padding: 18px 20px;
+	border: 1px solid var(--color-border);
+	border-radius: 7px;
+	background: var(--color-sidebar);
+	font-size: 12px;
+	line-height: 1.7;
+	color: var(--color-text-secondary);
+}
+
+.devHeader {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 6px;
+	color: var(--color-text-primary);
+}
+
+.devDot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--color-success);
+}
+
+.devPanel code {
+	display: inline;
+	padding: 0;
+	background: transparent;
+	color: var(--color-text-primary);
+	font-size: inherit;
+}
+
+.devPanel a {
+	display: inline-block;
+	margin-top: 7px;
+	color: var(--color-accent);
+	text-decoration: none;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.devPanel a:hover {
+	text-decoration: underline;
+}
+
+.devPanel a:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: 3px;
+}
+
+.footer {
+	margin-top: 24px;
+	color: var(--color-text-muted);
+	font-size: 11px;
+	text-align: center;
+}
+
+@media (max-width: 480px) {
+	.page {
+		padding: 32px 16px;
+	}
+
+	.card {
+		padding: 25px 21px;
+	}
+}
