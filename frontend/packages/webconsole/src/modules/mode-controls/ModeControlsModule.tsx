@@ -1,58 +1,50 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ModuleFrame } from "../../components/ModuleFrame";
-import { useStandMode, type OperatingMode, type UIController } from "../../controller";
+import { canRequestValve } from "../../controller/UIController";
+import {
+  useStandMode, OPERATING_MODES, VALVES, type UIController,
+  type OperatingMode, type ValveStates
+} from "../../controller";
 import styles from "./ModeControlsModule.module.css";
 
-const MODE_LABELS: Record<OperatingMode, string> = {
-	SAFE: "SAFE",
-	CHECKOUT: "Checkout",
-	OX_FILL: "Oxidizer fill",
-	PRESSURIZATION_FIRE: "Pressurization / Fire",
-};
+interface Props { controller: UIController; isAffected?: boolean }
 
-interface ModeControlsModuleProps {
-	controller: UIController;
-	isAffected?: boolean;
-}
+/** Operator requests never imply physical actuation or a successful mode change. */
+export function ModeControlsModule({ controller, isAffected = false }: Props) {
+  const mode = useStandMode(controller);
+  const [valves, setValves] = useState<ValveStates | null>(() => controller.getValveStates());
+  const [feedback, setFeedback] = useState("No commands requested this session");
+  // The valve reports can arrive independently of mode changes.
+  // useSyncExternalStore is not needed here because the subscription supplies a snapshot.
+  useEffect(() => controller.subscribeToValves(setValves), [controller]);
 
-/** Sends operator requests; never sets the stand's actual operating mode. */
-export function ModeControlsModule({ controller, isAffected = false }: ModeControlsModuleProps) {
-	const reportedMode = useStandMode(controller);
-	// Local feedback records the requested mode, not a verified stand response.
-	const [lastRequest, setLastRequest] = useState<OperatingMode | null>(null);
-
-	function request(mode: OperatingMode) {
-		controller.requestMode(mode);
-		setLastRequest(mode);
-	}
-
-	// The special SAFE path must not be gated by normal mode transition checks.
-	return (
-		<ModuleFrame title="Mode requests" status="idle" statusLabel="Mock only"
-			className={isAffected ? "affected-module" : ""}>
-			<div className={styles.container}>
-				<div className={styles.section}>
-					<span className={styles.label}>STAND-REPORTED MODE</span>
-					<strong className={styles.value}>{reportedMode ?? "UNKNOWN / NO REPORT"}</strong>
-				</div>
-				<p className={styles.note}>Requests do not imply that the stand accepted or completed a mode change.</p>
-				<div className={styles.buttons}>
-					{(Object.keys(MODE_LABELS) as OperatingMode[]).map((mode) => (
-						<button
-							key={mode}
-							type="button"
-							className={mode === "SAFE" ? styles.safeButton : styles.modeButton}
-							disabled={mode !== "SAFE" && (reportedMode === null || reportedMode === mode)}
-							onClick={() => request(mode)}
-						>
-							Request {MODE_LABELS[mode]}
-						</button>
-					))}
-				</div>
-				<div className={styles.requestStatus} role="status">
-					{lastRequest ? `Last mock request: ${MODE_LABELS[lastRequest]} (not confirmed)` : "No mode requests sent"}
-				</div>
-			</div>
-		</ModuleFrame>
-	);
+  function requestMode(next: OperatingMode) {
+    try { controller.requestMode(next); setFeedback(`Requested ${next}; awaiting stand report`); }
+    catch (error) { setFeedback(String(error)); }
+  }
+  function requestValve(id: (typeof VALVES)[number]["id"], target: "OPEN" | "CLOSED") {
+    try { controller.requestValve(id, target); setFeedback(`${id} ${target} requested; unconfirmed`); }
+    catch (error) { setFeedback(String(error)); }
+  }
+  return <ModuleFrame title="Mode & valve control" status="warning" statusLabel="Mock / no hardware" className={isAffected ? "affected-module" : ""}>
+    <div className={styles.container}>
+      <div className={styles.section}><span className={styles.label}>STAND-REPORTED MODE</span><strong className={styles.value}>{mode ?? "UNKNOWN"}</strong></div>
+      <p className={styles.note}>Requests only. Reported mode and valve positions come from separate stand topics. SAFE is not a guarantee that every valve closes.</p>
+      <div className={styles.buttons}>
+        {OPERATING_MODES.map((target) => <button key={target} type="button"
+          className={target === "SAFE" ? styles.safeButton : styles.modeButton}
+          disabled={target !== "SAFE" && (!mode || mode === target)}
+          onClick={() => requestMode(target)}>Request {target.replaceAll("_", " ")}</button>)}
+      </div>
+      <strong className={styles.label}>VALVE CONTROLS · REPORTED STATE</strong>
+      <div className={styles.valveList}>
+        {VALVES.map(({ id, label }) => <div className={styles.valveRow} key={id}>
+          <span>{label}</span><strong>{valves?.[id] ?? "UNKNOWN"}</strong>
+          <button type="button" disabled={!canRequestValve(mode, id)} onClick={() => requestValve(id, "OPEN")}>Open</button>
+          <button type="button" disabled={!canRequestValve(mode, id)} onClick={() => requestValve(id, "CLOSED")}>Close</button>
+        </div>)}
+      </div>
+      <p className={styles.requestStatus} role="status">{feedback}</p>
+    </div>
+  </ModuleFrame>;
 }

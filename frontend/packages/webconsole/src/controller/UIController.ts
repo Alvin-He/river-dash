@@ -1,62 +1,77 @@
-import {
-	isOperatingMode,
-	TOPICS,
-	type OperatingMode,
-	type TopicReader,
-	type TopicWriter,
-	type Unsubscribe,
-} from "./topics.ts";
+import { isOperatingMode, isValveId, TOPICS, type OperatingMode,
+  type TopicReader, type TopicWriter, type Unsubscribe, type ValveId,
+  type ValveStates, type CommandResponse } from "./topics";
+import type { OperatorEventLog } from "./OperatorEventLog";
 
-/**
- * The only controller operations a frontend module needs for stand modes.
- * Neither this contract nor its implementation imports another UI module.
- */
+/** The UI depends on this interface, never on another module or the mock store. */
 export interface UIController {
-	/** Read the latest stand report, or null if it is unavailable/invalid. */
-	getReportedMode(): OperatingMode | null;
-	/** Subscribe to mode reports; callback receives current state immediately. */
-	subscribeToMode(onChange: (mode: OperatingMode | null) => void): Unsubscribe;
-	/** Publish a request only. This is not an execution acknowledgment. */
-	requestMode(mode: OperatingMode): void;
+  getReportedMode(): OperatingMode | null;
+  subscribeToMode(callback: (mode: OperatingMode | null) => void): Unsubscribe;
+  getValveStates(): ValveStates | null;
+  subscribeToValves(callback: (states: ValveStates | null) => void): Unsubscribe;
+  requestMode(mode: OperatingMode): void;
+  requestValve(valve: ValveId, target: "OPEN" | "CLOSED"): void;
 }
 
 /**
- * Connects mode-aware UI modules to the shared topic transport.
- *
- * Important: Requests and reported modes are different topics. Publishing a
- * request does not change the reported mode, grant permission, or acknowledge
- * execution. The stand/backend remains responsible for safety interlocks.
+ * Transport-facing facade. Requests are NEVER acknowledgments or state reports.
+ * The backend, not this frontend, must enforce mode transitions and interlocks.
  */
 export class TopicUIController implements UIController {
-	private readonly topics: TopicReader;
-	private readonly commandWriter: TopicWriter;
+  private nextCommandId = 1;
+  private readonly reader: TopicReader;
+  private readonly writer: TopicWriter;
+  private readonly events: OperatorEventLog;
+  constructor(reader: TopicReader, writer: TopicWriter, events: OperatorEventLog) {
+    this.reader = reader; this.writer = writer; this.events = events;
+    reader.subscribe(TOPICS.reportedMode, (mode) => {
+      events.record("REPORT", `Stand mode report: ${mode ?? "UNAVAILABLE"}`, mode ? "info" : "warning");
+    });
+    reader.subscribe(TOPICS.valveStates, (states) => {
+      if (states) events.record("REPORT", `Valve state report: ${Object.entries(states).map(([id, value]) => `${id}=${value}`).join(", ")}`);
+      else events.record("SYSTEM", "Valve state report unavailable", "warning");
+    });
+    reader.subscribe(TOPICS.commandResponse, (response) => {
+      if (response) this.recordResponse(response);
+    });
+  }
+  getReportedMode(): OperatingMode | null {
+    const value = this.reader.read(TOPICS.reportedMode);
+    return isOperatingMode(value) ? value : null;
+  }
+  subscribeToMode(callback: (mode: OperatingMode | null) => void): Unsubscribe {
+    return this.reader.subscribe(TOPICS.reportedMode, (value) => callback(isOperatingMode(value) ? value : null));
+  }
+  getValveStates(): ValveStates | null { return this.reader.read(TOPICS.valveStates) ?? null; }
+  subscribeToValves(callback: (states: ValveStates | null) => void): Unsubscribe {
+    return this.reader.subscribe(TOPICS.valveStates, (states) => callback(states ?? null));
+  }
+  requestMode(mode: OperatingMode): void {
+    if (!isOperatingMode(mode)) throw new Error("Unrecognized stand mode");
+    // SAFE intentionally does not require the previous mode's ordinary exit conditions.
+    const id = this.commandId();
+    this.writer.publish(TOPICS.requestedMode, { id, mode });
+    this.events.record("REQUEST", `Mode change requested: ${mode} (not confirmed)`, "info", id);
+  }
+  requestValve(valve: ValveId, target: "OPEN" | "CLOSED"): void {
+    if (!isValveId(valve) || (target !== "OPEN" && target !== "CLOSED")) throw new Error("Invalid valve request");
+    // UI restriction improves usability; actual authorization belongs to the stand.
+    const mode = this.getReportedMode();
+    if (!canRequestValve(mode, valve)) throw new Error("Valve control unavailable in current mode");
+    const id = this.commandId();
+    this.writer.publish(TOPICS.valveRequest, { id, valve, target });
+    this.events.record("REQUEST", `${valve}: ${target} requested (not confirmed)`, "info", id);
+  }
+  private commandId(): string { return `demo-${this.nextCommandId++}`; }
+  private recordResponse(response: CommandResponse): void {
+    this.events.record("RESPONSE", `${response.accepted ? "Accepted" : "Rejected"}: ${response.message}`,
+      response.accepted ? "info" : "error", response.id);
+  }
+}
 
-	constructor(topics: TopicReader, commandWriter: TopicWriter) {
-		this.topics = topics;
-		this.commandWriter = commandWriter;
-	}
-
-	getReportedMode(): OperatingMode | null {
-		return this.asReportedMode(this.topics.read(TOPICS.reportedMode));
-	}
-
-	subscribeToMode(onChange: (mode: OperatingMode | null) => void): Unsubscribe {
-		return this.topics.subscribe(TOPICS.reportedMode, (value) => {
-			onChange(this.asReportedMode(value));
-		});
-	}
-
-	requestMode(mode: OperatingMode): void {
-		if (!isOperatingMode(mode)) {
-			throw new Error("Cannot request an unrecognized stand mode.");
-		}
-
-		// Intentionally does not publish to TOPICS.reportedMode.
-		this.commandWriter.publish(TOPICS.requestedMode, mode);
-	}
-
-	/** Never turn missing or malformed reports into an assumed SAFE state. */
-	private asReportedMode(value: unknown): OperatingMode | null {
-		return isOperatingMode(value) ? value : null;
-	}
+/** Provisional frontend availability; not the physical stand's command interlocks. */
+export function canRequestValve(mode: OperatingMode | null, valve: ValveId): boolean {
+  if (mode === "CHECKOUT") return true;
+  if (mode === "OX_FILL") return valve === "OX_FILL" || valve === "OX_VENT";
+  return false;
 }

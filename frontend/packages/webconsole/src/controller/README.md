@@ -1,149 +1,38 @@
-# River Dash UI Controller — developer guide
+# UI Controller, Mode/Valve Controls, and Operator Event Log
 
-> **Scope:** mock-only frontend integration. No hardware connection, command acknowledgement, or physical safety interlock is implemented. This version was adapted to `river-dash-refactored-no-tests.zip` in Project Sources.
+## Scope
 
-## Quick start
+This implementation runs with **mock topics only**. It does not connect to hardware and must not be used to control a physical stand. The valve identifiers and operating-mode availability are provisional, pending approval of the stand command protocol.
 
-From the repository root:
+## Responsibilities
 
-```sh
-cd frontend
-npm ci
-cd packages/webconsole
-npm run build
-npm run lint
-npm run dev
-```
+- `topics.ts`: typed contracts for mode reports, mode requests, valve reports, valve requests, and command responses.
+- `UIController.ts`: interface consumed by modules; publishes requests but does not manufacture acknowledgments or reported states. Also validates provisional UI valve availability.
+- `MockTopicStore.ts`: in-memory topic snapshots and listener management; replace with a real GDT adapter.
+- `MockStand.ts`: deliberately manual simulation of reported modes, reported valve states, and accepted/rejected responses. An accepted mock response does **not** change the reported physical state.
+- `OperatorEventLog.ts`: bounded in-memory session log; CSV export is not server-side persistence.
+- `modules/mode-controls`: mode and valve requests with authoritative state shown separately.
+- `modules/operator-events`: filters/search and CSV export of request, response, report and system entries.
+- `modules/mock-stand`: demo publisher, currently occupying the pressure placeholder area.
 
-The Vite build and lint checks require installed frontend dependencies. Automated tests are deferred to a later phase.
+## Example flow
 
-In the running UI, use **Mock stand simulator** to change the *reported* operating mode. Use **Mode requests** to issue an operator *request*. The header and mode-control module both display the stand report; they do not adopt a requested mode until a report arrives.
+1. Operator requests `CHECKOUT`: controller publishes `stand/mode/request` with a command ID, then logs a **request**.
+2. Simulator responds accepted/rejected: `stand/commands/response` creates a **response** entry. Acceptance does not change the mode.
+3. Simulator publishes `CHECKOUT` to `stand/mode`: controller and subscribed modules receive the **reported** mode; the event log records the report.
+4. In CHECKOUT, the UI offers valve requests. Selecting Open or Close publishes a request, not a valve state.
+5. The simulator must independently publish a valve report for the displayed state to change.
 
-## Why this exists
+## SAFE / connection-loss behavior
 
-The UI needs a way for independent modules to react to changes without importing or calling one another. The controller is a small boundary around a typed publish/subscribe transport. For now that transport is in memory; when the GDT PR is approved, replace it through an adapter rather than rewriting the UI.
+- SAFE mode requests remain available without the normal prerequisites of other transitions. They are still requests, not proof of SAFE.
+- Stand-originated SAFE reports update all subscribers without the controller telling modules to call each other.
+- SAFE disables individual valve requests in this provisional UI.
+- Missing modes are `UNKNOWN` and all valve requests are disabled. Missing valve reports are displayed as `UNKNOWN`.
+- SAFE **does not imply that every valve closes**. Never derive individual valve states from mode alone.
 
-## Architecture and responsibilities
+## Before hardware integration
 
-| File | Responsibility | Does not do |
-| --- | --- | --- |
-| `topics.ts` | Defines mock topic names, payloads, and narrow read/write interfaces | Create network connections |
-| `MockTopicStore.ts` | Hold current values and notify subscribers | Persist, replay, or distribute data between processes |
-| `UIController.ts` | Convert reported mode values to UI state; publish operator requests | Decide physical safety or grant hardware permissions |
-| `MockStand.ts` | Represent *stand-originated* reports in demos | Implement a real stand |
-| `useStandMode.ts` | Bridge controller subscriptions into React state, with cleanup | Speak GDT directly |
-| `demoController.ts` | Instantiate and wire dependencies in one place | Make request acknowledgement automatic |
-| `ModeControlsModule.tsx` | Display the reported mode and issue user requests | Claim a request succeeded |
-| `MockStandModule.tsx` | Generate simulated stand reports | Control hardware |
+The team must approve real valve IDs, mode transition conditions, backend command schema, command status lifecycle (queued/sent/accepted/rejected/completed/timed-out), report freshness and disconnection behavior, fire controls and authorization, priority of SAFE, durable logging and replay. The backend/stand must enforce all safety interlocks; frontend restrictions are advisory UX. A real GDT adapter must preserve topic snapshots, unsubscribe behavior and data type conversion. The current operator event log has a 500-entry session limit and exports CSV on demand; backend logging is required for the actual operational audit trail.
 
-```text
-Operator -> ModeControlsModule -> UIController -> stand/mode/request
-                                                   (request only)
-MockStand -> stand/mode -> MockTopicStore -> UIController -> React subscribers
-                                     (reported authoritative state in demo)
-```
-
-## Topic contract (temporary; not a finalized stand protocol)
-
-| Topic | Mock type | Publisher | Consumers |
-| --- | --- | --- | --- |
-| `stand/mode` | `OperatingMode` | `MockStand` (later: stand/backend) | Controller and mode-aware UI |
-| `stand/mode/request` | `OperatingMode` | Controller | Future request handler/backend |
-
-Valid mock `OperatingMode` values: `SAFE`, `CHECKOUT`, `OX_FILL`, `PRESSURIZATION_FIRE`. `null` in the controller represents **missing or unrecognized reported mode** and is displayed as `UNKNOWN`. These topic strings and payloads must be reconciled with the open GDT PR before integration.
-
-### Subscription behavior
-
-A `TopicReader.subscribe(topic, callback)` implementation must:
-
-1. Register the callback, then immediately deliver the latest value, even if it is `undefined`.
-2. Call the callback whenever that topic publishes or is cleared.
-3. Return a cleanup function to remove the listener; after cleanup, it must receive no more updates.
-4. Keep subscriptions independent of one another. A component mounted later should not wait for the next publish to see the current report.
-
-This contract is necessary for modular dashboards where panels mount, unmount, or pop out over time. Mock notifications are synchronous and process-local; real GDT networking can be asynchronous and may require explicit reconnect handling.
-
-### Read / request example
-
-```ts
-import { MockTopicStore } from './MockTopicStore.ts';
-import { MockStand } from './MockStand.ts';
-import { TopicUIController } from './UIController.ts';
-
-const store = new MockTopicStore();
-const controller = new TopicUIController(store, store);
-const stand = new MockStand(store);
-
-const unsubscribe = controller.subscribeToMode((mode) => {
-  console.log('Stand reports:', mode ?? 'UNKNOWN');
-});
-
-controller.requestMode('CHECKOUT'); // Writes request; reported mode unchanged.
-stand.reportMode('CHECKOUT');       // Separate simulated stand report.
-stand.reportMode('SAFE');           // Simulated stand-initiated SAFE.
-unsubscribe();                      // Stop receiving updates.
-```
-
-## SAFE behavior and failure states
-
-**Do not equate SAFE with closing all valves.** The River Dash requirements define SAFE as a mode that disables manual valve operation and may be entered without satisfying ordinary postconditions. The exact mechanical actions of the stand must be confirmed with the hardware/backend team.
-
-- An operator SAFE request updates **only** `stand/mode/request`. There is no command receipt, completion status, or automatic mode change in this mock.
-- A stand-originated SAFE report changes `stand/mode`; all subscribers observe it, even if the operator made no request.
-- A missing or malformed report maps to `null` / `UNKNOWN`, **never SAFE**. Do not claim an unknown stand state is safe.
-- The sample controls let the user request SAFE even if the current mode is missing, while other mode buttons require a valid report. **This is only demo UI behavior**, not a complete authorization, transition-condition, E-stop, or interlock implementation.
-- In real operation the backend/stand, not the frontend, must own command execution, mode validation, and hardware protections.
-
-## SOLID reasoning
-
-- **Single responsibility:** transport, mode interpretation, mock stand, React hook, and rendering are separated.
-- **Open/closed:** a new GDT-backed reader/writer can be supplied without changing `TopicUIController`.
-- **Liskov substitution:** new adapters must preserve current-snapshot delivery, notifications, and unsubscribe semantics; implementing the TypeScript method signatures alone is insufficient.
-- **Interface segregation:** reading and writing are separate interfaces; display-only consumers need only the narrow `UIController` interface.
-- **Dependency inversion:** `TopicUIController` takes `TopicReader` and `TopicWriter`, not `MockTopicStore` or concrete GDT classes.
-
-Do not add abstractions unless they make a real dependency boundary clearer. In particular, components must never import one another merely to broadcast a mode update.
-
-## How to replace the mock with GDT
-
-The uploaded `global_data_source.zip` has `GDT.get_topic`, `TopicOpenMode`, `EventTopicInitialized`, `EventTopicUpdate`, and `read_data`/`write_data`. A future `GdtTopicAdapter` can implement `TopicReader`/`TopicWriter` and be created in `demoController.ts` (renamed as the app's composition root). It should:
-
-1. Confirm exact topic names, wrapped data types (`Enum`, `Message`, etc.), writer ownership, and declaration format with the merged GDT code.
-2. Attach topic-initialized listeners **before** trying to open an absent topic; also subscribe to topic-update events.
-3. Convert and validate wrapped runtime values. Translate unavailable/invalid reports to `undefined` so the controller shows UNKNOWN.
-4. Reconcile initial snapshot vs update ordering and cleanup all event listeners; define reconnection semantics explicitly.
-5. Specify a real command protocol: IDs, acknowledgements, error handling, authorization, ordering, duplicate requests, and transport failures. The current `requestMode()` returns `void` and cannot report execution success.
-
-The provided GDT source's `network_stream.ts` does not demonstrate a working physical network transport. Do not assume browser-to-stand communication is complete.
-
-## Where it attaches to the current frontend
-
-- `App.tsx` is still the shell and passes the controller and simulator into `DashboardCanvas`.
-- `DashboardCanvas.tsx` owns windows and module layout, and hosts the two demo mode panels.
-- `ConsoleHeader.tsx` receives a display-only `standMode` prop and is not coupled to the controller implementation.
-- `ModuleFrame` and existing resize/layout logic are unchanged. Telemetry/graphs remain simulated and are labeled as demo data.
-
-## Review checklist (manual for now)
-
-Automated tests have been intentionally deferred. Before PR review, manually verify the following behaviors in the mock UI:
-
-- [ ] Requests never optimistically update the reported mode.
-- [ ] UNKNOWN and SAFE are visually distinct.
-- [ ] Unmounting panels removes subscriptions.
-- [ ] No UI module directly calls another module.
-- [ ] Simulated data and controls are clearly labeled.
-- [ ] Actual GDT integration and physical safety are left explicitly out of scope.
-
-Future work: add automated checks for missing reports, separate request/report topics, independent subscriptions, stand-initiated SAFE, late subscribers, cleanup, invalid data, and malformed requests.
-
-## Known limitations
-
-No real telemetry topic adapter, command response/acknowledgement, hardware connection, network reconciliation, or safety-interlock implementation is included. The mock is intended for development and architecture demonstrations, not operational control of a physical stand.
-
-## Integration with the October 30 River Dash source
-
-The dashboard retains its login route, fullscreen support, reset-layout behavior, and viewport-aware resizable modules. The UI Controller is instantiated separately and passed through props to the mode controls and mock stand simulator. The header receives only the reported mode as a value. No real stand transport is connected.
-
-The mock stand occupies the existing events-module slot for demonstration; it does not replace an actual event or command acknowledgment log.
-
-**Apply the patch from the repository root** with `git apply --check <patch-file>` and then `git apply <patch-file>`. Do not also apply the earlier patch.
+Automated tests are deferred as requested. Build and manually review in the browser before creating the PR.

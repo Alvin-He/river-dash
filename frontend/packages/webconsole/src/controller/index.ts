@@ -1,8 +1,10 @@
-export { TopicUIController } from "./UIController.ts";
-export type { UIController } from "./UIController.ts";
-export { MockTopicStore } from "./MockTopicStore.ts";
-export { MockStand } from "./MockStand.ts";
-export type { StandSimulator } from "./MockStand.ts";
-export { useStandMode } from "./useStandMode.ts";
-export { OPERATING_MODES, TOPICS } from "./topics.ts";
-export type { OperatingMode, TopicReader, TopicWriter } from "./topics.ts";
+export { TopicUIController, canRequestValve } from "./UIController";
+export type { UIController } from "./UIController";
+export { MockTopicStore } from "./MockTopicStore";
+export { MockStand } from "./MockStand";
+export type { StandSimulator } from "./MockStand";
+export { OperatorEventLog } from "./OperatorEventLog";
+export type { OperatorEvent } from "./OperatorEventLog";
+export { useStandMode } from "./useStandMode";
+export { OPERATING_MODES, VALVES, TOPICS } from "./topics";
+export type { OperatingMode, ValveId, ValveStates, TopicReader, TopicWriter } from "./topics";

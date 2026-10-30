@@ -34,3 +34,9 @@
 .modeButton:disabled { opacity: 0.4; cursor: not-allowed; }
 .modeButton:not(:disabled):hover, .safeButton:hover { border-color: var(--color-accent); }
 .requestStatus { color: var(--color-text-muted); font-size: 0.62rem; }
+
+.valveList { display: flex; flex-direction: column; gap: 6px; }
+.valveRow { display: grid; grid-template-columns: 1.2fr 0.9fr 0.7fr 0.7fr; gap: 5px; align-items: center; padding: 6px; border: 1px solid var(--color-border); }
+.valveRow strong { font-size: 0.6rem; }
+.valveRow button { background: var(--color-raised); border: 1px solid var(--color-border); color: var(--color-text-primary); border-radius: 3px; padding: 5px 1px; cursor: pointer; }
+.valveRow button:disabled { opacity: .36; cursor: not-allowed; }

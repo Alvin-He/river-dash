@@ -5,6 +5,8 @@ import type { UIController } from "../../controller/UIController";
 import type { StandSimulator } from "../../controller/MockStand";
 import { ModeControlsModule } from "../../modules/mode-controls/ModeControlsModule";
 import { MockStandModule } from "../../modules/mock-stand/MockStandModule";
+import { OperatorEventsModule } from "../../modules/operator-events/OperatorEventsModule";
+import type { OperatorEventLog } from "../../controller/OperatorEventLog";
 import { useDashboardLayout } from "../../layout/useDashboardLayout";
 import { PlaceholderModule } from "../../modules/placeholder";
 import { demoTelemetryStream, TelemetryModule } from "../../modules/telemetry";
@@ -16,13 +18,14 @@ interface DashboardCanvasProps {
 	resetSequence: number;
 	controller: UIController;
 	simulator: StandSimulator;
+	eventLog: OperatorEventLog;
 }
 
 /**
  * Registers visible dashboard modules and connects them to layout interactions.
  * Feature content lives in modules/, while geometry rules live in layout/.
  */
-export function DashboardCanvas({ isLocked, resetSequence, controller, simulator }: DashboardCanvasProps) {
+export function DashboardCanvas({ isLocked, resetSequence, controller, simulator, eventLog }: DashboardCanvasProps) {
 	const canvasRef = useRef<HTMLElement>(null);
 	const [viewport, setViewport] = useState(DEFAULT_SURFACE);
 	useEffect(() => {
@@ -75,10 +78,7 @@ export function DashboardCanvas({ isLocked, resetSequence, controller, simulator
 					onResizeStart={beginResize("pressure")}
 					onResizeEnd={endResize}
 				>
-					<PlaceholderModule
-						title="Propellant pressures"
-						isAffected={affectedModuleIds.has("pressure")}
-					/>
+					<MockStandModule controller={controller} simulator={simulator} isAffected={affectedModuleIds.has("pressure")} />
 				</FloatingModule>
 
 				<FloatingModule
@@ -138,7 +138,7 @@ export function DashboardCanvas({ isLocked, resetSequence, controller, simulator
 					onResizeStart={beginResize("events")}
 					onResizeEnd={endResize}
 				>
-					<MockStandModule controller={controller} simulator={simulator} isAffected={affectedModuleIds.has("events")} />
+					<OperatorEventsModule log={eventLog} isAffected={affectedModuleIds.has("events")} />
 				</FloatingModule>
 
 				<FloatingModule

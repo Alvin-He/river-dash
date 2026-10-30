@@ -1,0 +1,10 @@
+.container { display:flex; flex-direction:column; gap:8px; height:100%; min-height:0; font-size:.65rem; }
+.filters {display:flex; gap:5px; min-width:0;}
+.filters input {min-width:0; flex:1;}
+.filters input,.filters select,.filters button {border:1px solid var(--color-border); color:var(--color-text-primary); background:var(--color-raised); border-radius:3px; padding:4px; font-size:.62rem;}
+.note { margin:0; color:var(--color-text-muted); }
+.entries { margin:0; padding:0; list-style:none; overflow:auto; min-height:0; flex:1; }
+.entries li { padding:7px 4px; border-bottom:1px solid var(--color-border); overflow-wrap:anywhere; }
+.entries li div {font-size:.56rem; color:var(--color-text-muted); margin-bottom:3px;}
+.warning {border-left:2px solid var(--color-caution);}
+.error {border-left:2px solid #cf5858;}

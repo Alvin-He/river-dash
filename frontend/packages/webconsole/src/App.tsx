@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { uiController, standSimulator } from "./controller/demoController";
+import { uiController, standSimulator, operatorEvents } from "./controller/demoController";
 import { useStandMode } from "./controller/useStandMode";
 import { canOpenDashboard, signOutOfMockSession } from "./auth/mockAuth";
 import { ConsoleHeader } from "./components/ConsoleHeader/ConsoleHeader";
@@ -66,7 +66,7 @@ function DashboardPage() {
 				onResetLayout={() => setResetSequence((value) => value + 1)}
 				onSignOut={handleSignOut}
 			/>
-			<DashboardCanvas isLocked={isLocked} resetSequence={resetSequence} controller={uiController} simulator={standSimulator} />
+			<DashboardCanvas isLocked={isLocked} resetSequence={resetSequence} controller={uiController} simulator={standSimulator} eventLog={operatorEvents} />
 		</main>
 	);
 }

@@ -1,53 +1,50 @@
-/**
- * Temporary topic names for the mock integration.
- * Confirm the names and payloads with the global_data_table PR before connecting
- * to a real stand.
- */
+/** Mock topic contracts. Confirm valve identifiers and payloads with stand/backend owners. */
 export const TOPICS = {
-	reportedMode: "stand/mode",
-	requestedMode: "stand/mode/request",
+  reportedMode: "stand/mode",
+  requestedMode: "stand/mode/request",
+  valveStates: "stand/valves",
+  valveRequest: "stand/valves/request",
+  commandResponse: "stand/commands/response",
 } as const;
 
-/** Mode identifiers shared by the mock request and report topics. */
-export const OPERATING_MODES = [
-	"SAFE",
-	"CHECKOUT",
-	"OX_FILL",
-	"PRESSURIZATION_FIRE",
-] as const;
-
+export const OPERATING_MODES = ["SAFE", "CHECKOUT", "OX_FILL", "PRESSURIZATION_FIRE"] as const;
 export type OperatingMode = (typeof OPERATING_MODES)[number];
-
-/** Validate external runtime data; TypeScript types alone do not validate network input. */
 export function isOperatingMode(value: unknown): value is OperatingMode {
-	return OPERATING_MODES.some((mode) => mode === value);
+  return OPERATING_MODES.some((mode) => mode === value);
 }
 
-/** Single source of truth for the type carried by each topic. */
+/** Demo identifiers, NOT validated against the physical stand's valve map. */
+export const VALVES = [
+  { id: "OX_FILL", label: "Ox fill" },
+  { id: "OX_VENT", label: "Ox vent" },
+  { id: "FUEL_RUN", label: "Fuel run" },
+  { id: "OX_RUN", label: "Ox run" },
+  { id: "PRESSURANT", label: "Pressurant" },
+] as const;
+export type ValveId = (typeof VALVES)[number]["id"];
+export type ValveState = "OPEN" | "CLOSED" | "UNKNOWN";
+export type ValveStates = Record<ValveId, ValveState>;
+export type ValveCommand = { id: string; valve: ValveId; target: "OPEN" | "CLOSED" };
+export type ModeCommand = { id: string; mode: OperatingMode };
+export type CommandResponse = { id: string; accepted: boolean; message: string };
+export function isValveId(value: string): value is ValveId {
+  return VALVES.some((valve) => valve.id === value);
+}
+
 export type TopicValues = {
-	[TOPICS.reportedMode]: OperatingMode;
-	[TOPICS.requestedMode]: OperatingMode;
+  [TOPICS.reportedMode]: OperatingMode;
+  [TOPICS.requestedMode]: ModeCommand;
+  [TOPICS.valveStates]: ValveStates;
+  [TOPICS.valveRequest]: ValveCommand;
+  [TOPICS.commandResponse]: CommandResponse;
 };
-
 export type TopicName = keyof TopicValues;
-
-/** Call when a UI subscriber unmounts; repeated calls should be harmless. */
 export type Unsubscribe = () => void;
-
-/**
- * A subscription emits the latest value immediately, including undefined when
- * the topic has no data. Later updates are delivered to every subscriber.
- * Implementations must preserve this contract for late-mounting modules.
- */
+/** The subscriber gets the latest snapshot immediately, even when undefined. */
 export interface TopicReader {
-	read<T extends TopicName>(topic: T): TopicValues[T] | undefined;
-	subscribe<T extends TopicName>(
-		topic: T,
-		onUpdate: (value: TopicValues[T] | undefined) => void,
-	): Unsubscribe;
+  read<T extends TopicName>(topic: T): TopicValues[T] | undefined;
+  subscribe<T extends TopicName>(topic: T, callback: (value: TopicValues[T] | undefined) => void): Unsubscribe;
 }
-
-/** Publishers are separated from readers to limit write privileges. */
 export interface TopicWriter {
-	publish<T extends TopicName>(topic: T, value: TopicValues[T]): void;
+  publish<T extends TopicName>(topic: T, value: TopicValues[T]): void;
 }

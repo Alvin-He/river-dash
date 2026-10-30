@@ -1,15 +1,11 @@
-import { MockStand } from "./MockStand.ts";
-import { MockTopicStore } from "./MockTopicStore.ts";
-import { TopicUIController } from "./UIController.ts";
+import { MockStand } from "./MockStand";
+import { MockTopicStore } from "./MockTopicStore";
+import { TopicUIController } from "./UIController";
+import { OperatorEventLog } from "./OperatorEventLog";
 
-/**
- * Demo composition root. Only this file chooses a concrete topic transport.
- * Switch to a GDT-backed adapter here after the GDT PR and protocol are ready.
- */
+/** Composition root: replace the mock transport here when GDT is integrated. */
 const topics = new MockTopicStore();
-
-export const uiController = new TopicUIController(topics, topics);
+export const operatorEvents = new OperatorEventLog();
+export const uiController = new TopicUIController(topics, topics, operatorEvents);
 export const standSimulator = new MockStand(topics);
-
-// Starting state for the SIMULATOR only; never assume a real stand starts SAFE.
-standSimulator.reportMode("SAFE");
+standSimulator.reportMode("SAFE"); // Only a simulator startup state, never a real-stand assumption.
