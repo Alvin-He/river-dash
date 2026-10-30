@@ -31,7 +31,6 @@
 }
 
 .layoutLock {
-	margin-left: auto;
 	padding: 6px 9px;
 	color: var(--color-text-primary);
 	background: var(--color-raised);
@@ -57,3 +56,39 @@
 		display: none;
 	}
 }
+
+.signOut {
+	margin-left: 12px;
+	padding: 6px 9px;
+	color: var(--color-text-secondary);
+	background: transparent;
+	border: 1px solid var(--color-border);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 0.7rem;
+}
+
+.signOut:hover {
+	color: var(--color-text-primary);
+	background: var(--color-raised);
+}
+
+.signOut:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: 2px;
+}
+
+.resetLayout {
+	margin-left: auto;
+	padding: 6px 9px;
+	color: var(--color-text-secondary);
+	background: transparent;
+	border: 1px solid var(--color-border);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 0.7rem;
+}
+.resetLayout:disabled { opacity: 0.45; cursor: not-allowed; }
+.resetLayout:not(:disabled):hover { color: var(--color-text-primary); background: var(--color-raised); }
+.resetLayout:focus-visible, .layoutLock:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+@media (max-width: 480px) { .connection { display: none; } .brand b { font-size: 0.6rem; } }

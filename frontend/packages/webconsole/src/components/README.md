@@ -1,29 +1,58 @@
-# Components
+# Shared components
 
-This directory contains reusable React components shared across dashboard modules.
+Reusable dashboard components provide a shared shell and interaction surface;
+feature modules in `../modules/` supply domain content and its internal styling.
 
-## Items
+## Responsibilities
 
-- `ModuleFrame` — shared, draggable header and resizable-panel visual shell for
-  dashboard modules.
-- `FloatingModule` — free-positioned wrapper with eight-direction (N, NE, E,
-  SE, S, SW, W, NW) resizing, neighbor-edge alignment, snapping to the
-  console header when within 32px, top-edge alignment to other modules within
-  12px (even across separate columns), and live shared-divider resizing with
-  adjacent modules. The layout engine enforces minimum sizes and surface
-  boundaries; crowded resizes stop at the last valid geometry rather than
-  reverting the entire adjustment.
-- During a drag, affected or snap-anchor modules glow rather than the dragged
-  module. During resizing, the glow follows neighboring modules whose
-  position or size changes; it disappears when the interaction ends.
+- `ConsoleHeader` — dashboard-level lock, reset, and sign-out controls.
+- `DashboardCanvas` — viewport measurement, registration of visible panels,
+  layout-hook wiring, and scrollable canvas. It does not implement geometry math.
+- `FloatingModule` — `react-rnd` positioning and all eight resize handles;
+  forwards preview/commit events to the layout hook. It is the **movable and
+  resizable wrapper**, not the feature content itself.
+- `ModuleFrame` — shared panel appearance, header/drag grip, status label,
+  optional actions and affected-neighbor glow. It **does not** implement
+  dragging, resizing, snapping or persistence.
 
-## UI composition
+## `ModuleFrame` public interface
 
-- `ConsoleHeader` owns the brand, layout lock button, and header styling.
-- `DashboardCanvas` owns the panel registration and canvas styling, but not
-  geometry calculations. `layout/useDashboardLayout.ts` handles state.
-- The `FloatingModule` wrapper owns the `react-rnd` styles, while `ModuleFrame`
-  owns the shared module shell and affected-neighbor glow.
-- Placeholder-only styling lives in the placeholder module itself.
+| Prop | Required | Description |
+| --- | --- | --- |
+| `title: string` | Yes | Standard header text; header is the drag grip. |
+| `children: ReactNode` | Yes | Feature content inside the padded body. |
+| `status?: "live" \| "idle" \| "warning" \| "error"` | No | Status color; defaults to `idle`. |
+| `statusLabel?: string` | No | Optional visible status label (no label means no status indicator). |
+| `actions?: ReactNode` | No | Optional header controls. |
+| `className?: string` | No | Extra class on the outer panel, including `affected-module`. |
 
-See `../layout/README.md` for the interaction lifecycle and invariants.
+The child content wrapper is `display: flex; flex: 1; min-height: 0;
+overflow: hidden; padding: 8px`. Children may use flex, grid, SVG, or other
+layouts; they don't have to be independently resizable. Feature authors should
+make children shrink responsibly and own internal scroll regions. The frame
+will clip content that exceeds the space available.
+
+Feature modules receive no special context, dimension callback, or runtime
+min/max-size setter from `ModuleFrame`. The currently implemented glow pattern
+passes `isAffected` from `DashboardCanvas` to each feature, which supplies the
+class `affected-module` to `ModuleFrame`. During a move, glow marks changed
+neighbors and valid snap anchors; during resize, it marks changed neighbors.
+Nearby panels that neither participate in a snap nor change geometry should
+remain unlit.
+
+## Styling ownership
+
+- Shared theme tokens / global defaults: `../styles/tokens.css` and global CSS.
+- Canvas sizing and scrolling: `DashboardCanvas.module.css`.
+- `react-rnd` geometry and resize handles: `FloatingModule`.
+- Common title, status, padding, border and glow: `ModuleFrame.module.css`
+  and `ModuleFrame.effects.css`.
+- Feature-specific layout, data styling and scroll regions: each feature's
+  CSS Module. Do not set absolute canvas coordinates inside a feature module.
+
+Interactive controls in the header (buttons/inputs) are excluded from drag;
+use `[data-no-drag]` for other areas that must not begin dragging.
+
+See `../layout/README.md` for the geometry lifecycle and
+[`MODULE_DEVELOPER_GUIDE.md`](../../../../../MODULE_DEVELOPER_GUIDE.md) for
+an end-to-end registration example.

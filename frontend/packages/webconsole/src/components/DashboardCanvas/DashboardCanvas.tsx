@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { DEFAULT_SURFACE, MIN_SURFACE_WIDTH, minWidthFor } from "../../layout/dashboardLayout";
 import { FloatingModule } from "../FloatingModule";
 import { useDashboardLayout } from "../../layout/useDashboardLayout";
 import { PlaceholderModule } from "../../modules/placeholder";
@@ -7,6 +9,7 @@ import styles from "./DashboardCanvas.module.css";
 
 interface DashboardCanvasProps {
 	isLocked: boolean;
+	resetSequence: number;
 }
 
 /**
@@ -14,9 +17,30 @@ interface DashboardCanvasProps {
  * Feature content lives in modules/, while geometry rules live in layout/.
  * Module-specific minimum heights intentionally match the original dashboard.
  */
-export function DashboardCanvas({ isLocked }: DashboardCanvasProps) {
+export function DashboardCanvas({ isLocked, resetSequence }: DashboardCanvasProps) {
+	const canvasRef = useRef<HTMLElement>(null);
+	const [viewport, setViewport] = useState(DEFAULT_SURFACE);
+	useEffect(() => {
+		const element = canvasRef.current;
+		if (!element) return;
+		const measure = () => {
+			const style = getComputedStyle(element);
+			const horizontalPadding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+			const verticalPadding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+			setViewport({
+				width: Math.max(MIN_SURFACE_WIDTH, Math.floor(element.clientWidth - horizontalPadding)),
+				height: Math.max(280, Math.floor(element.clientHeight - verticalPadding)),
+			});
+		};
+		const observer = new ResizeObserver(measure);
+		observer.observe(element);
+		measure();
+		return () => observer.disconnect();
+	}, []);
 	const {
 		positions,
+		bounds,
+		resetLayout,
 		affectedModuleIds,
 		updatePosition,
 		updateResize,
@@ -24,13 +48,20 @@ export function DashboardCanvas({ isLocked }: DashboardCanvasProps) {
 		clearDragPreview,
 		beginResize,
 		endResize,
-	} = useDashboardLayout();
+	} = useDashboardLayout(viewport);
+	const previousReset = useRef(resetSequence);
+	useEffect(() => {
+		if (previousReset.current === resetSequence) return;
+		previousReset.current = resetSequence;
+		resetLayout();
+	}, [resetSequence, resetLayout]);
 
 	return (
-		<section className={styles.canvas} aria-label="Movable dashboard modules">
-			<div className={styles.surface}>
+		<section ref={canvasRef} className={styles.canvas} aria-label="Movable dashboard modules">
+			<div className={styles.surface} style={{ height: bounds.height }}>
 				<FloatingModule
 					position={positions.pressure}
+					minWidth={minWidthFor("pressure")}
 					isLocked={isLocked}
 					onPositionChange={updatePosition("pressure")}
 					onResize={updateResize("pressure")}
@@ -47,6 +78,7 @@ export function DashboardCanvas({ isLocked }: DashboardCanvasProps) {
 
 				<FloatingModule
 					position={positions.telemetry}
+					minWidth={minWidthFor("telemetry")}
 					minHeight={190}
 					isLocked={isLocked}
 					onPositionChange={updatePosition("telemetry")}
@@ -64,6 +96,7 @@ export function DashboardCanvas({ isLocked }: DashboardCanvasProps) {
 
 				<FloatingModule
 					position={positions.pid}
+					minWidth={minWidthFor("pid")}
 					isLocked={isLocked}
 					onPositionChange={updatePosition("pid")}
 					onResize={updateResize("pid")}
@@ -77,6 +110,7 @@ export function DashboardCanvas({ isLocked }: DashboardCanvasProps) {
 
 				<FloatingModule
 					position={positions.controls}
+					minWidth={minWidthFor("controls")}
 					isLocked={isLocked}
 					onPositionChange={updatePosition("controls")}
 					onResize={updateResize("controls")}
@@ -93,6 +127,7 @@ export function DashboardCanvas({ isLocked }: DashboardCanvasProps) {
 
 				<FloatingModule
 					position={positions.events}
+					minWidth={minWidthFor("events")}
 					isLocked={isLocked}
 					onPositionChange={updatePosition("events")}
 					onResize={updateResize("events")}
@@ -109,6 +144,7 @@ export function DashboardCanvas({ isLocked }: DashboardCanvasProps) {
 
 				<FloatingModule
 					position={positions.graphs}
+					minWidth={minWidthFor("graphs")}
 					minHeight={280}
 					isLocked={isLocked}
 					onPositionChange={updatePosition("graphs")}

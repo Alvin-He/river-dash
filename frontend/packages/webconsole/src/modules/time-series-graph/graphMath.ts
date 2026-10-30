@@ -95,6 +95,11 @@ export function getStrokeDasharray(lineStyle: GraphLineStyle = "solid"): string 
 	return undefined;
 }
 
+/**
+ * Round a proposed Y-axis tick spacing up to a readable "nice" interval:
+ * 1, 2, 2.5, 5, or 10 times a power of ten (e.g., 3.7 -> 5).
+ * Used by getGraphScale; unrelated to the time-axis interval chooser.
+ */
 function getNiceInterval(rawInterval: number): number {
 	const exponent = Math.floor(Math.log10(rawInterval));
 	const magnitude = 10 ** exponent;

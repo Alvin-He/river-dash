@@ -96,6 +96,7 @@ export function FloatingModule({
 			position={{ x: position.x, y: position.y }}
 			size={{ width: position.width, height: position.height }}
 			dragHandleClassName="drag-handle"
+			cancel="button, input, select, textarea, [data-no-drag]"
 			resizeHandleStyles={resizeHandleStyles}
 			// During drag, provide a preview only; commit the position on drag stop.
 			onDrag={(_event, data) =>

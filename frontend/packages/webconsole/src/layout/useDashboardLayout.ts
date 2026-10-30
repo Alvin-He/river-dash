@@ -1,81 +1,100 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ModulePosition } from "../components/FloatingModule";
 import {
-	createInitialLayout,
-	findChangedNeighborIds,
-	findMoveAffectedModules,
-	resizeWithNeighbors,
-	resolveModulePosition,
-	type DashboardLayout,
+  createInitialLayout, findChangedNeighborIds, findMoveAffectedModules,
+  fitLayoutToWidth, MIN_SURFACE_WIDTH, parseSavedLayout, resizeWithNeighbors,
+  resolveModulePosition, requiredSurfaceHeight,
+  type DashboardLayout, type SurfaceBounds,
 } from "./dashboardLayout";
 
-/** State for the currently dragged module (used only for visual feedback). */
-interface DragPreview {
-	moduleId: string;
-	position: ModulePosition;
+const STORAGE_KEY = "river-dash-layout-v1";
+type ResizeStart = { moduleId: string; layout: DashboardLayout };
+type DragPreview = { moduleId: string; position: ModulePosition };
+
+function persistLayout(layout: DashboardLayout) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, layout })); }
+  catch { /* storage may be unavailable */ }
 }
 
-/** The original layout is needed to identify neighbors changed by a resize. */
-interface ResizeStart {
-	moduleId: string;
-	layout: DashboardLayout;
+function loadLayout(): DashboardLayout {
+  try {
+    return parseSavedLayout(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null")) ?? createInitialLayout();
+  } catch { return createInitialLayout(); }
 }
 
 /**
- * Coordinates module interactions without duplicating layout calculations.
- *
- * - During drag, only the preview changes; placement is committed on drag stop.
- * - During resize, geometry updates immediately via the existing layout engine.
- * - The active module never appears in the set of affected (glowing) neighbors.
- *
- * Keep the layout rules in dashboardLayout.ts, not in this React hook.
+ * Committed geometry is independent of viewport-derived packing, so temporarily
+ * narrowing a browser doesn't overwrite the user's larger-screen arrangement.
+ * Only a pointer-release commits layout changes to local storage.
  */
-export function useDashboardLayout() {
-	const [positions, setPositions] = useState(createInitialLayout);
-	const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
-	const [resizeStart, setResizeStart] = useState<ResizeStart | null>(null);
+export function useDashboardLayout(viewport: SurfaceBounds) {
+  const [committed, setCommitted] = useState(loadLayout);
+  const [liveResize, setLiveResize] = useState<DashboardLayout | null>(null);
+  const liveResizeRef = useRef<DashboardLayout | null>(null);
+  const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
+  const [resizeStart, setResizeStart] = useState<ResizeStart | null>(null);
+  const resizeStartRef = useRef<ResizeStart | null>(null);
 
-	const affectedModuleIds = new Set(
-		dragPreview
-			? findMoveAffectedModules(dragPreview.moduleId, dragPreview.position, positions)
-			: resizeStart
-				? findChangedNeighborIds(resizeStart.moduleId, resizeStart.layout, positions)
-				: [],
-	);
+  // Derive narrow-window layout during render: no viewport-triggered state effect.
+  const positions = fitLayoutToWidth(liveResize ?? committed, viewport.width);
+  const bounds = {
+    width: Math.max(MIN_SURFACE_WIDTH, viewport.width),
+    height: requiredSurfaceHeight(positions, viewport.height),
+  };
+  const affectedModuleIds = new Set(
+    dragPreview
+      ? findMoveAffectedModules(dragPreview.moduleId, dragPreview.position, positions, bounds)
+      : resizeStart
+        ? findChangedNeighborIds(resizeStart.moduleId, resizeStart.layout, positions)
+        : [],
+  );
 
-	const updatePosition = (moduleId: string) => (requested: ModulePosition) => {
-		setDragPreview(null);
-		setPositions((current) => resolveModulePosition(moduleId, requested, current));
-	};
+  const updatePosition = (moduleId: string) => (requested: ModulePosition) => {
+    const next = resolveModulePosition(moduleId, requested, positions, bounds);
+    setCommitted(next);
+    setDragPreview(null);
+    persistLayout(next);
+  };
+  const updateResize = (moduleId: string) => (requested: ModulePosition, direction: string) => {
+    const baseline = resizeStartRef.current?.moduleId === moduleId
+      ? resizeStartRef.current.layout : positions;
+    const next = resizeWithNeighbors(moduleId, requested, direction, baseline, bounds);
+    liveResizeRef.current = next;
+    setLiveResize(next);
+  };
+  const previewMove = (moduleId: string) => (position: ModulePosition) =>
+    setDragPreview({ moduleId, position });
+  const clearDragPreview = () => setDragPreview(null);
+  const beginResize = (moduleId: string) => () => {
+    setDragPreview(null);
+    const snapshot = { moduleId, layout: positions };
+    resizeStartRef.current = snapshot;
+    setResizeStart(snapshot);
+    liveResizeRef.current = null;
+    setLiveResize(null);
+  };
+  const endResize = () => {
+    const next = liveResizeRef.current ?? positions;
+    setCommitted(next);
+    setLiveResize(null);
+    liveResizeRef.current = null;
+    resizeStartRef.current = null;
+    setResizeStart(null);
+    persistLayout(next);
+  };
+  const resetLayout = () => {
+    const defaults = createInitialLayout();
+    setCommitted(defaults);
+    setLiveResize(null);
+    liveResizeRef.current = null;
+    resizeStartRef.current = null;
+    setResizeStart(null);
+    setDragPreview(null);
+    persistLayout(defaults);
+  };
 
-	const updateResize = (moduleId: string) => (
-		requested: ModulePosition,
-		direction: string,
-	) => {
-		setPositions((current) =>
-			resizeWithNeighbors(moduleId, requested, direction, current),
-		);
-	};
-
-	const previewMove = (moduleId: string) => (requested: ModulePosition) => {
-		setDragPreview({ moduleId, position: requested });
-	};
-
-	const clearDragPreview = () => setDragPreview(null);
-	const beginResize = (moduleId: string) => () => {
-		setDragPreview(null);
-		setResizeStart({ moduleId, layout: positions });
-	};
-	const endResize = () => setResizeStart(null);
-
-	return {
-		positions,
-		affectedModuleIds,
-		updatePosition,
-		updateResize,
-		previewMove,
-		clearDragPreview,
-		beginResize,
-		endResize,
-	};
+  return {
+    positions, bounds, affectedModuleIds, updatePosition, updateResize,
+    previewMove, clearDragPreview, beginResize, endResize, resetLayout,
+  };
 }

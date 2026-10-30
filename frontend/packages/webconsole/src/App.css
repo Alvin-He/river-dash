@@ -2,8 +2,8 @@
 
 /* Only the application shell belongs here; component styles live beside components. */
 .console {
-	width: var(--console-width);
-	height: var(--console-height);
+	width: 100%;
+	min-height: 100dvh;
 	overflow: hidden;
 	background: var(--color-canvas);
 }

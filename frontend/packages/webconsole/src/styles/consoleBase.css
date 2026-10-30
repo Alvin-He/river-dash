@@ -2,8 +2,20 @@
 
 /* Global console defaults override the starter styles in index.css. */
 #root {
-	width: var(--console-width);
-	height: var(--console-height);
+	width: 100%;
+	min-height: 100dvh;
+}
+
+/* Let the login page fill the viewport without changing dashboard geometry. */
+#root:has(.login-screen) {
+	width: 100%;
+	max-width: none;
+	min-height: 100svh;
+	height: auto;
+	margin: 0;
+	border: 0;
+	display: block;
+	text-align: left;
 }
 
 * {
