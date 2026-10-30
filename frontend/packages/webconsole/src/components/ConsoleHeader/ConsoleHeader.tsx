@@ -1,7 +1,9 @@
+import type { OperatingMode } from "../../controller/topics";
 import styles from "./ConsoleHeader.module.css";
 
 interface ConsoleHeaderProps {
 	isLocked: boolean;
+	standMode: OperatingMode | null;
 	isFullscreen: boolean;
 	fullscreenSupported: boolean;
 	fullscreenError: string;
@@ -14,6 +16,7 @@ interface ConsoleHeaderProps {
 /** Displays console identity, the layout lock, and the existing status label. */
 export function ConsoleHeader({
 	isLocked,
+	standMode,
 	isFullscreen,
 	fullscreenSupported,
 	fullscreenError,
@@ -33,7 +36,7 @@ export function ConsoleHeader({
 			<button className={styles.layoutLock} onClick={onToggleLock}>
 				{isLocked ? "Edit layout" : "Lock layout"}
 			</button>
-			<p className={styles.connection}>● LIVE · 24.8 Hz</p>
+			<p className={styles.connection}>SIMULATION · NO HARDWARE · MODE: {standMode ?? "UNKNOWN"}</p>
 			<button
 				className={styles.fullscreen}
 				type="button"
