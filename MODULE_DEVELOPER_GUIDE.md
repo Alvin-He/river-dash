@@ -1,8 +1,6 @@
 # River Dash — Dashboard module developer guide
 
-_Last updated: 2026-10-28. Describes the current webconsole implementation, not a proposed module API._
-
-This guide answers the questions raised during the pull request review: how to add a module, what `ModuleFrame` expects, how layout geometry and sizing work, who owns styling, what the placeholder represents, and what "nice interval" means in graph code.
+This guide documents the current webconsole module architecture: how to add a module, what `ModuleFrame` expects, how geometry and sizing work, styling ownership, placeholder modules, and graph tick intervals.
 
 Relevant source root: `frontend/packages/webconsole/src/`.
 
@@ -144,7 +142,7 @@ For action controls inside a header, use standard interactive elements (already 
 
 **Drag/glow behavior:** During a move preview, `findMoveAffectedModules` calculates changed neighbors and an actual snap anchor when the snap is applied. Merely being nearby does not cause a glow. During resize, `findChangedNeighborIds` compares the starting geometry with live geometry. `DashboardCanvas` passes each module's membership in `affectedModuleIds` to the feature module.
 
-**Save behavior:** A successful drag or resize completion persists the committed layout under `river-dash-layout-v1` in `localStorage`. Preview-only positions are not persisted. Narrow-viewport packing is derived without overwriting the wider committed layout unless an interaction is committed there.
+**Save behavior:** A successful drag or resize completion persists the committed layout under `river-dash-layout-v1` in `localStorage`. Preview-only positions are not persisted. The default full dashboard uses a 1920 × 1080 (16:9) reference; narrower viewports proportionally shrink module geometry before reflow is necessary. This viewport-derived scaling/packing does not overwrite the wider committed layout unless an interaction is committed there. Committed narrow-window edits save their reference width to prevent repeated scaling after reload.
 
 ## 6. What `PlaceholderModule` is for
 
@@ -160,6 +158,6 @@ For action controls inside a header, use standard interactive elements (already 
 - Geometry limits are configured centrally, not per-module dynamically.
 - Saved layouts use a fixed version and currently fall back to defaults when new modules are added.
 - The layout's narrow-screen minimum width is 420 px, so very narrow browser areas can scroll horizontally as well as vertically.
-- The automated layout test file and its npm script have been removed for the MVP documentation update. This **does not establish correctness**. Before merging, install dependencies and run `npm run build` and `npm run lint` in the webconsole workspace, plus manual browser checks (dragging, snapping/glow, all resize handles, locking, split-screen, persistence, reset).
+- There are currently no automated layout tests or `test:layout` script. After installing dependencies, use `npm run build` and `npm run lint` in the webconsole workspace and manually check dragging, snapping/glow, resize handles, locking, split-screen, persistence, and reset.
 
 See also `src/modules/README.md`, `src/components/README.md`, `src/layout/README.md`, and `MOVING_RESIZING_SWEEP.md`.

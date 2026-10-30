@@ -15,7 +15,6 @@ interface DashboardCanvasProps {
 /**
  * Registers visible dashboard modules and connects them to layout interactions.
  * Feature content lives in modules/, while geometry rules live in layout/.
- * Module-specific minimum heights intentionally match the original dashboard.
  */
 export function DashboardCanvas({ isLocked, resetSequence }: DashboardCanvasProps) {
 	const canvasRef = useRef<HTMLElement>(null);

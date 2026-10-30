@@ -1,9 +1,14 @@
 # Dashboard dragging, resizing, and geometry
 
 All geometry is in CSS pixels relative to the scrollable module surface.
-`DashboardCanvas` measures the actual viewport width using `ResizeObserver`;
-`DEFAULT_SURFACE` (1888 × 999) is the initial desktop geometry reference, not
-a mandatory browser size.
+`DashboardCanvas` measures the actual viewport width using `ResizeObserver`.
+`DEFAULT_SURFACE` (1888 × 999) represents the content area of a default
+**1920 × 1080 (16:9)** dashboard after its 48px header and 16px padding.
+It is a geometry reference, not a fixed browser aspect ratio: the dashboard
+always fills the available window. Smaller windows proportionally resize the
+module rectangles while preserving their relative arrangement, restoring gaps
+and respecting minimum sizes. If they cannot fit, modules reflow into scrollable
+rows; no CSS zoom or transform changes pointer coordinates.
 
 ## Ownership and lifecycle
 
@@ -42,8 +47,8 @@ additional registration switch or per-module function in this file.
 
 If the feature needs another minimum size, add its ID to
 `MIN_WIDTH_BY_MODULE` or `MIN_HEIGHT_BY_MODULE`. The default minimum is
-260 × 150 px. Current exceptions include 420 × 280 px graphs, 300 px minimum
-width for telemetry/P&ID/controls, and 190 px minimum height for telemetry.
+260 × 150 px. Current exceptions include 300 × 280 px graphs, 300 px minimum
+width for the other registered modules, and 190 px minimum height for telemetry.
 
 In `DashboardCanvas.tsx`, import and wrap the feature in `FloatingModule`,
 using the **same ID** for position, affected-highlight lookup, and every
@@ -70,17 +75,20 @@ work.
    neighbors to their minimums and/or push them away.
 4. A failed operation does not commit a partially updated neighbor chain.
 5. Continuous resize calculations use the snapshot captured at resize start.
-6. Narrow windows repack panels into vertically scrollable rows. The surface
+6. Narrow windows first resize panels proportionally (subject to their minimum
+   sizes), then repack into vertically scrollable rows if needed. The surface
    has a 420 px minimum width, so extremely narrow areas may scroll horizontally.
-7. Responsive packing does not overwrite a saved wider layout unless the user
-   explicitly commits a change in the packed layout.
+7. Responsive scaling/packing does not overwrite a saved wider layout unless
+   the user commits an edit. The saved `referenceWidth` records the editing
+   viewport so committed narrow layouts are not scaled again on the next render
+   or when reloaded; older saved layouts without it use the desktop reference.
 8. Only committed layouts are persisted in `localStorage`, checked on load;
    Reset layout restores defaults when editing is unlocked.
 
 ## Validation for the MVP
 
-The automated layout test file and `test:layout` npm script are intentionally
-absent for now. Their removal does not verify the interactions.
+There is currently no automated layout test file or `test:layout` npm script.
+The interactions require manual verification.
 
 From the webconsole workspace, run `npm run build` and `npm run lint` after
 installing dependencies. Manually exercise each resize handle, snapping and

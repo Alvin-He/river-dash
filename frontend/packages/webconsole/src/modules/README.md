@@ -8,6 +8,7 @@ implementing drag/resize behavior or duplicating the standard visual shell.
 
 - `telemetry/TelemetryModule.tsx` — raw telemetry display with an internal
   scrollable table and a replaceable `TelemetryStream` subscription adapter.
+  Its temporary data source is in `telemetry/demoTelemetryStream.ts`.
 - `time-series-graph/TimeSeriesGraphModule.tsx` — graph module with a
   container-responsive plot and a demo stream adapter.
 - `placeholder/PlaceholderModule.tsx` — **temporary content**, used where a

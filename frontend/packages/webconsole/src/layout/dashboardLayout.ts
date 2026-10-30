@@ -4,7 +4,8 @@ import type { ModulePosition } from "../components/FloatingModule";
 export const MODULE_GAP = 16;
 export const MIN_WIDTH = 260;
 export const MIN_SURFACE_WIDTH = 420;
-const MIN_WIDTH_BY_MODULE: Record<string, number> = { telemetry: 300, controls: 300, pid: 300, graphs: 420 };
+const MIN_WIDTH_BY_MODULE: Record<string, number> = { telemetry: 300, controls: 300, pid: 300, graphs: 300, pressure: 300, events: 300 };
+/** Content region of a 1920 x 1080 (16:9) dashboard, after the 48px header and 16px padding. */
 export const DEFAULT_SURFACE = { width: 1888, height: 999 };
 const MIN_HEIGHT = 150;
 const MIN_HEIGHT_BY_MODULE: Record<string, number> = { telemetry: 190, graphs: 280 };
@@ -16,7 +17,7 @@ export type SurfaceBounds = { width: number; height: number };
 export interface SnapTarget { moduleId: string }
 
 const defaults: DashboardLayout = {
-  pressure: { x: 0, y: 0, width: 340, height: 260 },
+  pressure: { x: 0, y: 0, width: 350, height: 260 },
   telemetry: { x: 356, y: 0, width: 350, height: 340 },
   pid: { x: 356, y: 356, width: 350, height: 250 },
   controls: { x: 722, y: 0, width: 350, height: 410 },
@@ -86,7 +87,7 @@ function getSnapResult(id: string, p: ModulePosition, current: DashboardLayout, 
     }
     // Line up near top edges without also changing horizontal placement.
     if (Math.abs(p.x + p.width + MODULE_GAP - other.x) <= 64 ||
-        Math.abs(other.x + other.width + MODULE_GAP - p.x) <= 64) {
+      Math.abs(other.x + other.width + MODULE_GAP - p.x) <= 64) {
       offer(otherId, p.x, other.y, 0, ALIGN_DISTANCE);
     }
   });
@@ -95,8 +96,10 @@ function getSnapResult(id: string, p: ModulePosition, current: DashboardLayout, 
   // Surface edge snap has priority over neighbor snap near the canvas origin.
   if (p.y <= SNAP_DISTANCE) result = { ...result, y: 0 };
   if (p.x <= ALIGN_DISTANCE) result = { ...result, x: 0 };
-  return { position: clampMove(result, id, bounds), anchors: choices[0] &&
-    result.x === choices[0].p.x && result.y === choices[0].p.y ? [choices[0].target] : [] };
+  return {
+    position: clampMove(result, id, bounds), anchors: choices[0] &&
+      result.x === choices[0].p.x && result.y === choices[0].p.y ? [choices[0].target] : []
+  };
 }
 
 function movedPast(a: ModulePosition, b: ModulePosition, direction: Direction): ModulePosition {
@@ -107,7 +110,7 @@ function movedPast(a: ModulePosition, b: ModulePosition, direction: Direction): 
 }
 type Direction = "left" | "right" | "top" | "bottom";
 
-/** Transactional chain push: failed operations do not touch the caller's layout. */
+/** Push colliding modules in the provided draft layout; the caller discards it on failure. */
 function pushCollisions(layout: DashboardLayout, sourceId: string, direction: Direction, bounds: SurfaceBounds, fixedId?: string, validate = true): boolean {
   const queue = [sourceId];
   let operations = 0;
@@ -125,6 +128,13 @@ function pushCollisions(layout: DashboardLayout, sourceId: string, direction: Di
     }
   }
   return !validate || layoutIsValid(layout, bounds);
+}
+
+/** Allow vertical push chains to extend beyond the current scroll height on narrow canvases. */
+function pushBounds(layout: DashboardLayout, bounds: SurfaceBounds): SurfaceBounds {
+  if (bounds.width >= DEFAULT_SURFACE.width) return bounds;
+  const extraHeight = Object.values(layout).reduce((total, p) => total + p.height + MODULE_GAP, 0);
+  return { ...bounds, height: bounds.height + extraHeight };
 }
 
 function movementDirection(old: ModulePosition, requested: ModulePosition): Direction {
@@ -158,7 +168,7 @@ export function resolveModulePosition(id: string, requested: ModulePosition, cur
   const bounded = clampMove({ ...current[id], x: requested.x, y: requested.y }, id, bounds);
   const snapped = getSnapResult(id, bounded, current, bounds).position;
   const moved = { ...current, [id]: snapped };
-  if (pushCollisions(moved, id, movementDirection(current[id], snapped), bounds)) return moved;
+  if (pushCollisions(moved, id, movementDirection(current[id], snapped), pushBounds(current, bounds))) return moved;
   const free = nearestFree(id, snapped, current, bounds);
   return free ? { ...current, [id]: free } : current;
 }
@@ -189,9 +199,9 @@ function growIntoNeighbors(id: string, target: ModulePosition, edge: Direction, 
     const dimension = edge === "left" || edge === "right" ? neighbor.width : neighbor.height;
     const shrink = Math.min(dimension - minSize, Math.max(0,
       edge === "right" ? target.x + target.width + MODULE_GAP - neighbor.x :
-      edge === "left" ? neighbor.x + neighbor.width + MODULE_GAP - target.x :
-      edge === "bottom" ? target.y + target.height + MODULE_GAP - neighbor.y :
-      neighbor.y + neighbor.height + MODULE_GAP - target.y));
+        edge === "left" ? neighbor.x + neighbor.width + MODULE_GAP - target.x :
+          edge === "bottom" ? target.y + target.height + MODULE_GAP - neighbor.y :
+            neighbor.y + neighbor.height + MODULE_GAP - target.y));
     let resized = { ...neighbor };
     if (edge === "right") resized = { ...neighbor, x: neighbor.x + shrink, width: neighbor.width - shrink };
     if (edge === "left") resized = { ...neighbor, width: neighbor.width - shrink };
@@ -212,7 +222,8 @@ function resizeEdge(id: string, requested: ModulePosition, edge: Direction, curr
   const target = requestForEdge(original, requested, edge, id, bounds);
   const grows = edge === "left" || edge === "right" ? target.width > original.width : target.height > original.height;
   if (!grows) return { ...current, [id]: target };
-  const attempt = growIntoNeighbors(id, target, edge, current, bounds);
+  const available = pushBounds(current, bounds);
+  const attempt = growIntoNeighbors(id, target, edge, current, available);
   if (attempt) return attempt;
   let low = 0;
   let high = 1;
@@ -224,7 +235,7 @@ function resizeEdge(id: string, requested: ModulePosition, edge: Direction, curr
       width: Math.round(original.width + (target.width - original.width) * fraction),
       height: Math.round(original.height + (target.height - original.height) * fraction),
     }, edge, id, bounds);
-    const trial = growIntoNeighbors(id, candidate, edge, current, bounds);
+    const trial = growIntoNeighbors(id, candidate, edge, current, available);
     if (trial) { best = trial; low = fraction; }
     else high = fraction;
   }
@@ -258,27 +269,67 @@ export function findMoveAffectedModules(id: string, requested: ModulePosition, c
   const snap = getSnapResult(id, bounded, current, bounds);
   const [target] = snap.anchors;
   if (target && !close(snap.position, bounded) && current[id] && next[id] && !close(next[id], current[id]) &&
-      close(next[id], snap.position) && !affected.includes(target)) affected.push(target);
+    close(next[id], snap.position) && !affected.includes(target)) affected.push(target);
   return affected;
 }
 
-/** Recover a valid full layout when the viewport is too narrow or stored geometry is stale. */
-export function fitLayoutToWidth(layout: DashboardLayout, width: number): DashboardLayout {
+/** Keep the desktop arrangement as windows shrink; only reflow if minima prevent it. */
+export function fitLayoutToWidth(layout: DashboardLayout, width: number, savedWidth = DEFAULT_SURFACE.width): DashboardLayout {
   const safeWidth = Math.max(MIN_SURFACE_WIDTH, Math.floor(width));
   const ordered = moduleIds.map(id => [id, layout[id] ?? defaults[id]] as const);
   const candidate = Object.fromEntries(ordered.map(([id, p]) => [id, { ...p }])) as DashboardLayout;
-  const tallest = Math.max(999, ...ordered.map(([, p]) => p.y + p.height + MODULE_GAP));
-  if (layoutIsValid(candidate, { width: safeWidth, height: tallest })) return candidate;
-  // Deterministic shelf packing: preserve panel sizes, allow vertical scrolling.
+  const tallest = Math.max(DEFAULT_SURFACE.height, ...ordered.map(([, p]) => p.y + p.height + MODULE_GAP));
+  const referenceWidth = Math.max(savedWidth, ...ordered.map(([, p]) => p.x + p.width));
+  if (safeWidth >= referenceWidth && layoutIsValid(candidate, { width: safeWidth, height: tallest })) return candidate;
+
+  // Scale CSS-pixel geometry rather than the DOM: react-rnd retains accurate pointers.
+  // Minimum panel sizes remain absolute, so some gaps need to be restored afterward.
+  const scale = Math.min(1, safeWidth / referenceWidth);
+  const scaled = Object.fromEntries(ordered.map(([id, p]) => [id, {
+    x: Math.round(p.x * scale), y: Math.round(p.y * scale),
+    width: Math.max(minWidthFor(id), Math.round(p.width * scale)),
+    height: Math.max(minHeightFor(id), Math.round(p.height * scale)),
+  }])) as DashboardLayout;
+
+  // Preserve aligned columns/rows and their relative ordering as long as they fit.
+  const fitted: DashboardLayout = {};
+  let fits = true;
+  const visualOrder = [...ordered].sort((a, b) => a[1].y - b[1].y || a[1].x - b[1].x);
+  for (const [id, original] of visualOrder) {
+    const p = { ...scaled[id] };
+    for (const [otherId, other] of Object.entries(fitted)) {
+      if (original.x === (layout[otherId] ?? defaults[otherId]).x) p.x = other.x;
+      if (original.y === (layout[otherId] ?? defaults[otherId]).y) p.y = other.y;
+    }
+    for (let attempts = 0; attempts < moduleIds.length; attempts++) {
+      const conflict = Object.entries(fitted).find(([, other]) => overlapsWithGap(p, other));
+      if (!conflict) break;
+      const [otherId, other] = conflict;
+      const before = layout[otherId] ?? defaults[otherId];
+      const rightOf = original.x >= before.x + before.width + MODULE_GAP;
+      const below = original.y >= before.y + before.height + MODULE_GAP;
+      const dx = other.x + other.width + MODULE_GAP - p.x;
+      const dy = other.y + other.height + MODULE_GAP - p.y;
+      if (rightOf && (!below || dx <= dy)) p.x += dx;
+      else if (below) p.y += dy;
+      else { fits = false; break; }
+    }
+    if (!fits || p.x + p.width > safeWidth ||
+      Object.values(fitted).some(other => overlapsWithGap(p, other))) { fits = false; break; }
+    fitted[id] = p;
+  }
+  if (fits && layoutIsValid(fitted, { width: safeWidth, height: requiredSurfaceHeight(fitted) })) return fitted;
+
+  // Beyond the minimum width, preserve usable panel sizes and scroll vertically.
   const packed: DashboardLayout = {};
   let x = 0, y = 0, rowHeight = 0;
-  for (const [id, p] of ordered) {
-    const panelWidth = clamp(p.width, minWidthFor(id), safeWidth);
-    const panelHeight = Math.max(p.height, minHeightFor(id));
+  for (const [id] of ordered) {
+    const p = scaled[id];
+    const panelWidth = Math.min(p.width, safeWidth);
     if (x > 0 && x + panelWidth > safeWidth) { x = 0; y += rowHeight + MODULE_GAP; rowHeight = 0; }
-    packed[id] = { x, y, width: panelWidth, height: panelHeight };
+    packed[id] = { x, y, width: panelWidth, height: p.height };
     x += panelWidth + MODULE_GAP;
-    rowHeight = Math.max(rowHeight, panelHeight);
+    rowHeight = Math.max(rowHeight, p.height);
   }
   return packed;
 }

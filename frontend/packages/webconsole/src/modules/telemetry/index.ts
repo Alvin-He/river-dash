@@ -1,1 +1,2 @@
-export { demoTelemetryStream, TelemetryModule, type TelemetryReading, type TelemetryStream } from "./TelemetryModule";
+export { TelemetryModule, type TelemetryReading, type TelemetryStream } from "./TelemetryModule";
+export { demoTelemetryStream } from "./demoTelemetryStream";

@@ -1,25 +1,23 @@
-# River Dash — Moving and Resizing Sweep (2026-10-28)
+# Dashboard movement and resizing
 
-## Implemented
+The layout engine lives in `frontend/packages/webconsole/src/layout/dashboardLayout.ts`. `useDashboardLayout.ts` manages committed geometry, drag/resize previews, and browser-local persistence. `DashboardCanvas.tsx` connects that state to `FloatingModule`, which uses `react-rnd` for pointer interaction.
 
-- Replaced the fixed-canvas, unbounded search and fragile neighbor-update code
-  with pure, bounded, deterministic layout operations.
-- Moving modules: near-edge snapping, transactional directional push chains,
-  nearest available placement on blocked pushes, surface boundary clamping,
-  and accurate neighbor highlighting without highlighting the active panel.
-- Resizing modules: all eight handles, anchored opposite edges, live adjustment,
-  shrink-first neighbor handling, chained push fallback, binary-search limit
-  when blocked, module-specific minimum widths and heights, and no overlaps.
-- Stabilized continuous resizing with a fixed layout snapshot captured at the
-  start of each resize, rather than recomputing from already changed geometry.
-- Added actual ResizeObserver-based canvas sizing, narrow-window reflow,
-  vertically scrollable layouts, and a minimum usable canvas width.
-- Added validated localStorage layout persistence, Reset layout recovery,
-  and restoration of larger-window layouts after temporary responsive reflow.
-- Preserved layout locking, telemetry/demo modules, and feature module APIs.
+## Movement
 
-## Remaining broader product items (not part of this geometry sweep)
+- Modules snap to nearby compatible edges. Actual snap anchors and neighbors whose geometry changes are highlighted during drag preview.
+- Dragging can push overlapping neighbors in the drag direction, including chains of multiple modules. The solver works on a draft layout and falls back to a free position if a push cannot be resolved.
+- Narrow canvases allow vertical push chains to extend the scrollable surface rather than rejecting a move solely because the current scroll height is exhausted.
 
-- Native pop-out windows and multi-layout workspace management.
-- Module add/remove/minimize UI and keyboard shortcuts.
-- Production control-mode behavior, real telemetry and control backends.
+## Resizing
+
+- Each module supports eight resize handles, with minimum widths and heights specified in `dashboardLayout.ts` and passed to `FloatingModule`.
+- A growing module can shrink affected neighbors down to their minima or push them away. If the requested size cannot be accommodated, the engine limits the resize.
+- Each resize uses a starting geometry snapshot so successive pointer updates do not accumulate changes to neighbors.
+
+## Window sizing and persistence
+
+- The reference workspace is `DEFAULT_SURFACE` (1888 × 999 CSS pixels), representing the content region of a nominal 1920 × 1080 dashboard.
+- Smaller windows scale the saved geometry and then reflow modules if minimum sizes prevent the arrangement from fitting. The canvas can scroll.
+- Completed drag/resize changes and Reset layout persist geometry in `localStorage` under `river-dash-layout-v1`; drag previews do not persist. Saved layouts also store a reference width so edited narrow-window layouts are not repeatedly scaled.
+
+See [the layout README](./frontend/packages/webconsole/src/layout/README.md) for geometry invariants, module registration, and verification guidance.

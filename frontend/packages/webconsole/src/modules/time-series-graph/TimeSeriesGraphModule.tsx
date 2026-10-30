@@ -21,13 +21,8 @@ export function TimeSeriesGraphModule({
 	);
 
 	useEffect(() => {
-		if (!stream) {
-			setStreamSeries(series ?? createDemoGraphSeries());
-			return;
-		}
-
-		return stream.subscribe(setStreamSeries);
-	}, [series, stream]);
+		return stream?.subscribe(setStreamSeries);
+	}, [stream]);
 
 	const visibleSeries = series ?? streamSeries;
 

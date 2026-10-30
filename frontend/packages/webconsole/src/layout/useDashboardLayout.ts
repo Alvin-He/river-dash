@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { ModulePosition } from "../components/FloatingModule";
 import {
-  createInitialLayout, findChangedNeighborIds, findMoveAffectedModules,
+  createInitialLayout, DEFAULT_SURFACE, findChangedNeighborIds, findMoveAffectedModules,
   fitLayoutToWidth, MIN_SURFACE_WIDTH, parseSavedLayout, resizeWithNeighbors,
   resolveModulePosition, requiredSurfaceHeight,
   type DashboardLayout, type SurfaceBounds,
@@ -11,24 +11,32 @@ const STORAGE_KEY = "river-dash-layout-v1";
 type ResizeStart = { moduleId: string; layout: DashboardLayout };
 type DragPreview = { moduleId: string; position: ModulePosition };
 
-function persistLayout(layout: DashboardLayout) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, layout })); }
+function persistLayout(layout: DashboardLayout, referenceWidth: number) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, layout, referenceWidth })); }
   catch { /* storage may be unavailable */ }
 }
 
-function loadLayout(): DashboardLayout {
+function loadLayout(): { layout: DashboardLayout; referenceWidth: number } {
   try {
-    return parseSavedLayout(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null")) ?? createInitialLayout();
-  } catch { return createInitialLayout(); }
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+    const restored = parseSavedLayout(raw);
+    const width = raw?.referenceWidth;
+    return {
+      layout: restored ?? createInitialLayout(),
+      referenceWidth: restored && typeof width === "number" && Number.isFinite(width) &&
+        width >= MIN_SURFACE_WIDTH && width <= 100000 ? width : DEFAULT_SURFACE.width,
+    };
+  } catch { return { layout: createInitialLayout(), referenceWidth: DEFAULT_SURFACE.width }; }
 }
 
 /**
  * Committed geometry is independent of viewport-derived packing, so temporarily
  * narrowing a browser doesn't overwrite the user's larger-screen arrangement.
- * Only a pointer-release commits layout changes to local storage.
+ * Drag/resize commits and explicit layout resets update local storage.
  */
 export function useDashboardLayout(viewport: SurfaceBounds) {
-  const [committed, setCommitted] = useState(loadLayout);
+  const [saved, setSaved] = useState(loadLayout);
+  const committed = saved.layout;
   const [liveResize, setLiveResize] = useState<DashboardLayout | null>(null);
   const liveResizeRef = useRef<DashboardLayout | null>(null);
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
@@ -36,7 +44,7 @@ export function useDashboardLayout(viewport: SurfaceBounds) {
   const resizeStartRef = useRef<ResizeStart | null>(null);
 
   // Derive narrow-window layout during render: no viewport-triggered state effect.
-  const positions = fitLayoutToWidth(liveResize ?? committed, viewport.width);
+  const positions = liveResize ?? fitLayoutToWidth(committed, viewport.width, saved.referenceWidth);
   const bounds = {
     width: Math.max(MIN_SURFACE_WIDTH, viewport.width),
     height: requiredSurfaceHeight(positions, viewport.height),
@@ -51,9 +59,9 @@ export function useDashboardLayout(viewport: SurfaceBounds) {
 
   const updatePosition = (moduleId: string) => (requested: ModulePosition) => {
     const next = resolveModulePosition(moduleId, requested, positions, bounds);
-    setCommitted(next);
+    setSaved({ layout: next, referenceWidth: viewport.width });
     setDragPreview(null);
-    persistLayout(next);
+    persistLayout(next, viewport.width);
   };
   const updateResize = (moduleId: string) => (requested: ModulePosition, direction: string) => {
     const baseline = resizeStartRef.current?.moduleId === moduleId
@@ -75,22 +83,22 @@ export function useDashboardLayout(viewport: SurfaceBounds) {
   };
   const endResize = () => {
     const next = liveResizeRef.current ?? positions;
-    setCommitted(next);
+    setSaved({ layout: next, referenceWidth: viewport.width });
     setLiveResize(null);
     liveResizeRef.current = null;
     resizeStartRef.current = null;
     setResizeStart(null);
-    persistLayout(next);
+    persistLayout(next, viewport.width);
   };
   const resetLayout = () => {
     const defaults = createInitialLayout();
-    setCommitted(defaults);
+    setSaved({ layout: defaults, referenceWidth: DEFAULT_SURFACE.width });
     setLiveResize(null);
     liveResizeRef.current = null;
     resizeStartRef.current = null;
     setResizeStart(null);
     setDragPreview(null);
-    persistLayout(defaults);
+    persistLayout(defaults, DEFAULT_SURFACE.width);
   };
 
   return {

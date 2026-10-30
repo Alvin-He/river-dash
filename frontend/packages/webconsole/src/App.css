@@ -1,9 +1,19 @@
 @import "./styles/consoleBase.css";
 
-/* Only the application shell belongs here; component styles live beside components. */
+/* The 1920 x 1080 reference is a default layout, not a fixed viewport ratio. */
 .console {
 	width: 100%;
-	min-height: 100dvh;
+	height: 100dvh;
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
+	background: var(--color-canvas);
+}
+
+/* Keep the console and module surface tied to the real fullscreen viewport. */
+.console:fullscreen {
+	width: 100%;
+	height: 100dvh;
+	min-height: 0;
 	background: var(--color-canvas);
 }
