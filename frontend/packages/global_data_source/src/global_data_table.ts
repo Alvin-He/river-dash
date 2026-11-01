@@ -1,7 +1,12 @@
 import { err, ok, Result } from "neverthrow";
 import "./topic.ts";
 import { TopicRead, TopicRW, type TopicAny } from "./topic.ts";
-import { NetworkStreamMessage, NetworkTopicStream } from "./network_stream.ts";
+import {
+	NetworkStreamMessage,
+	NetworkTopicStream,
+	TransportNothing,
+	type Transport,
+} from "./network_stream.ts";
 import type {
 	NetworkDeDeclare,
 	NetworkDeUpdate,
@@ -190,8 +195,8 @@ TopicRegistered satisfies NetworkDeDeclare<TopicRegistered>;
  * ```
  *
  */
-export class GlobalDataTable extends EventTarget {
-	private m_topic_stream_endpoint: NetworkTopicStream;
+export class GlobalDataTable<T extends Transport> extends EventTarget {
+	private m_topic_stream_endpoint: NetworkTopicStream<T>;
 	// Name - Topic
 	private m_topic_registry = new Map<string, TopicRegistered>();
 	private m_topic_infos = new Map<string, TopicInfo>();
@@ -202,7 +207,7 @@ export class GlobalDataTable extends EventTarget {
 	 *
 	 * @param topic_stream the network stream that this topic uses to replicate data
 	 */
-	public constructor(topic_stream: NetworkTopicStream) {
+	public constructor(topic_stream: NetworkTopicStream<T>) {
 		super();
 
 		this.m_topic_stream_endpoint = topic_stream;
@@ -230,6 +235,8 @@ export class GlobalDataTable extends EventTarget {
 				);
 			}
 		});
+
+		topic_stream.start();
 	}
 
 	/**
@@ -385,11 +392,19 @@ export class GlobalDataTable extends EventTarget {
 
 		// when peer mode is specified
 		if (peer_mode != undefined) {
+			const peer_topic = new TopicRegistered(
+				name,
+				peer_mode,
+				type,
+				init_data_or_declaration,
+				init_ts,
+			);
+
 			this.m_topic_stream_endpoint.stream_send_message(
 				new NetworkStreamMessage(
 					name,
 					NetworkStreamMessageType.Declare,
-					topic.network_serialize_declare(),
+					peer_topic.network_serialize_declare(),
 				),
 			);
 
@@ -593,6 +608,7 @@ export class EventTopicInitialized extends Event {
 /**
  * Global {@link GlobalDataTable} Instance. Use this object unless you need a custom table.
  */
-export const GDT: GlobalDataTable = new GlobalDataTable(
-	new NetworkTopicStream(),
-);
+export const GDT: GlobalDataTable<TransportNothing> =
+	new GlobalDataTable<TransportNothing>(
+		new NetworkTopicStream(new TransportNothing()),
+	);

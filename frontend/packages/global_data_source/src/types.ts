@@ -705,12 +705,10 @@ export interface TUVariant<T, TIdent> {
 export class Enum extends TaggedUnion<void, void> implements NetworkSerDeclare {
 	public static readonly TYPE: DataTypes_t = DataTypes.Enum;
 	public network_serialize_declare(): object {
-		const enum_dec: Enum_dt = {
-			variants: new Map(),
-		};
+		const enum_dec: Enum_dt = { variants: [] };
 
 		for (const v of this.m_variants.values()) {
-			enum_dec.variants.set(v.discriminant, v.name);
+			enum_dec.variants.push([v.discriminant, v.name]);
 		}
 
 		return enum_dec;
@@ -722,7 +720,7 @@ export class Enum extends TaggedUnion<void, void> implements NetworkSerDeclare {
 		return zod_parse(Enum_ds, data).map((v) => {
 			const new_e = new Enum();
 
-			for (const [d, n] of v.variants.entries()) {
+			for (const [d, n] of v.variants) {
 				new_e.associate(d, n);
 			}
 
@@ -755,16 +753,17 @@ export class ADT
 	public static readonly TYPE: DataTypes_t = DataTypes.ADT;
 
 	public network_serialize_declare(): object {
-		const adt_dec: ADT_dt = {
-			variants: new Map(),
-		};
+		const adt_dec: ADT_dt = { variants: [] };
 
 		for (const v of this.m_variants.values()) {
-			adt_dec.variants.set(v.discriminant, {
-				name: v.name,
-				type: v.type,
-				value: v.value.network_serialize_declare(),
-			});
+			adt_dec.variants.push([
+				v.discriminant,
+				{
+					name: v.name,
+					type: v.type,
+					value: v.value.network_serialize_declare(),
+				},
+			]);
 		}
 
 		return adt_dec;

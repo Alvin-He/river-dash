@@ -5,14 +5,16 @@ import {
 	EventTopicInitialized,
 	GlobalDataTable,
 } from "../global_data_table.ts";
-import { NetworkTopicStream } from "../network_stream.ts";
+import { NetworkTopicStream, TransportNothing } from "../network_stream.ts";
 import { err } from "neverthrow";
 import { TopicOpenMode, DataTypes } from "../literals.ts";
 import type { TopicRW } from "../topic.ts";
 import { I32, U32 } from "../types.ts";
 
 describe(GlobalDataTable, () => {
-	const gdt = new GlobalDataTable(new NetworkTopicStream());
+	const gdt = new GlobalDataTable(
+		new NetworkTopicStream(new TransportNothing()),
+	);
 
 	const d1 = I32.from(10)._unsafeUnwrap();
 	const d2 = I32.from(20)._unsafeUnwrap();
