@@ -151,6 +151,16 @@ export class NumberSized<
 	}
 }
 
+export interface From<T extends number | bigint, S extends NumberSized<T>> {
+	/**
+	 * Create from a number
+	 *
+	 * @param n the number
+	 * @returns ok if number fits within range, NumericError if not
+	 */
+	from(n: T): Result<S, NumericError_t>;
+}
+
 /**
  * A normal integer (not large or super small -- aka not any of the 64bit or above data types).
  * Implemented using `number`
@@ -244,12 +254,6 @@ export class I32 extends NumberNorInteger {
 		super(0, I32.MAX, I32.MIN);
 	}
 
-	/**
-	 * Create an I32 from a number
-	 *
-	 * @param n the number
-	 * @returns ok if number fits within range, NumericError if not
-	 */
 	public static from(n: number): Result<I32, NumericError_t> {
 		return new I32().checked_set(n);
 	}
@@ -261,6 +265,7 @@ export class I32 extends NumberNorInteger {
 	}
 }
 I32 satisfies NetworkDeDeclare<I32>;
+I32 satisfies From<number, I32>;
 
 /**
  * 16bit signed integer
@@ -279,12 +284,6 @@ export class I16 extends NumberNorInteger {
 		super(0, I16.MAX, I16.MIN);
 	}
 
-	/**
-	 * Create an I16 from a number
-	 *
-	 * @param n the number
-	 * @returns ok if number fits within range, NumericError if not
-	 */
 	public static from(n: number): Result<I16, NumericError_t> {
 		return new I16().checked_set(n);
 	}
@@ -296,6 +295,7 @@ export class I16 extends NumberNorInteger {
 	}
 }
 I16 satisfies NetworkDeDeclare<I16>;
+I16 satisfies From<number, I16>;
 
 /**
  * 64bit signed integer
@@ -314,12 +314,6 @@ export class I64 extends NumberBigInteger {
 		super(0n, I64.MAX, I64.MIN);
 	}
 
-	/**
-	 * Create an I64 from a bigint
-	 *
-	 * @param n the bigint
-	 * @returns ok if bigint fits within range, NumericError if not
-	 */
 	public static from(n: bigint): Result<I64, NumericError_t> {
 		return new I64().checked_set(n);
 	}
@@ -331,6 +325,7 @@ export class I64 extends NumberBigInteger {
 	}
 }
 I64 satisfies NetworkDeDeclare<I64>;
+I64 satisfies From<bigint, I64>;
 
 /**
  * 16bit unsigned integer
@@ -349,12 +344,6 @@ export class U16 extends NumberNorInteger {
 		super(0, U16.MAX, U16.MIN);
 	}
 
-	/**
-	 * Create an U16 from a number
-	 *
-	 * @param n the number
-	 * @returns ok if number fits within range, NumericError if not
-	 */
 	public static from(n: number): Result<U16, NumericError_t> {
 		return new U16().checked_set(n);
 	}
@@ -366,6 +355,7 @@ export class U16 extends NumberNorInteger {
 	}
 }
 U16 satisfies NetworkDeDeclare<U16>;
+U16 satisfies From<number, U16>;
 
 /**
  * 32bit unsigned integer
@@ -384,12 +374,6 @@ export class U32 extends NumberNorInteger {
 		super(0, U32.MAX, U32.MIN);
 	}
 
-	/**
-	 * Create an U32 from a number
-	 *
-	 * @param n the number
-	 * @returns ok if number fits within range, NumericError if not
-	 */
 	public static from(n: number): Result<U32, NumericError_t> {
 		return new U32().checked_set(n);
 	}
@@ -401,6 +385,7 @@ export class U32 extends NumberNorInteger {
 	}
 }
 U32 satisfies NetworkDeDeclare<U32>;
+U32 satisfies From<number, U32>;
 
 /**
  * 64bit unsigned integer
@@ -419,12 +404,6 @@ export class U64 extends NumberBigInteger {
 		super(0n, U64.MAX, U64.MIN);
 	}
 
-	/**
-	 * Create an U64 from a bigint
-	 *
-	 * @param n the bigint
-	 * @returns ok if the bigint fits within range, NumericError if not
-	 */
 	public static from(n: bigint): Result<U64, NumericError_t> {
 		return new U64().checked_set(n);
 	}
@@ -436,6 +415,7 @@ export class U64 extends NumberBigInteger {
 	}
 }
 U64 satisfies NetworkDeDeclare<U64>;
+U64 satisfies From<bigint, U64>;
 
 /**
  * 32bit IEEE 754 single precision decimal
@@ -447,19 +427,17 @@ U64 satisfies NetworkDeDeclare<U64>;
  */
 export class F32 extends NumberDecimal {
 	public static readonly TYPE: DataTypes_t = DataTypes.F32;
-	public static readonly MAX: number = (2 - 2 ** -23) * 2 ** 127;
-	public static readonly MIN: number = -(2 - 2 ** -23) * 2 ** 127;
+	public static readonly MAX: number = Math.fround((2 - 2 ** -23) * 2 ** 127);
+	public static readonly MIN: number = Math.fround(-(2 - 2 ** -23) * 2 ** 127);
 
 	private constructor() {
 		super(0, F32.MAX, F32.MIN);
 	}
 
-	/**
-	 * Create an F32 from a number
-	 *
-	 * @param n the number
-	 * @returns ok if number fits within range, NumericError if not
-	 */
+	public override checked_set(n: number): Result<this, NumericError_t> {
+		return super.checked_set(Math.fround(n));
+	}
+
 	public static from(n: number): Result<F32, NumericError_t> {
 		return new F32().checked_set(n);
 	}
@@ -471,6 +449,7 @@ export class F32 extends NumberDecimal {
 	}
 }
 F32 satisfies NetworkDeDeclare<F32>;
+F32 satisfies From<number, F32>;
 
 /**
  * 64bit IEEE 754 single precision decimal.
@@ -486,18 +465,12 @@ export class F64 extends NumberDecimal {
 	public static readonly TYPE: DataTypes_t = DataTypes.F64;
 	// JS number is IEEE 754 binary64
 	public static readonly MAX: number = Number.MAX_VALUE;
-	public static readonly MIN: number = Number.MIN_VALUE;
+	public static readonly MIN: number = -Number.MAX_VALUE; // MIN_VALUE is not actually min
 
 	private constructor() {
 		super(0, F64.MAX, F64.MIN);
 	}
 
-	/**
-	 * Create an F64 from a number
-	 *
-	 * @param n the number
-	 * @returns ok if number fits within range, NumericError if not
-	 */
 	public static from(n: number): Result<F64, NumericError_t> {
 		return new F64().checked_set(n);
 	}
@@ -509,6 +482,7 @@ export class F64 extends NumberDecimal {
 	}
 }
 F64 satisfies NetworkDeDeclare<F64>;
+F64 satisfies From<number, F64>;
 
 /**
  * A String Message. This can be used to represent any textual data or JSON.
@@ -861,29 +835,6 @@ export class Group
 	 */
 	public constructor() {
 		super();
-	}
-
-	/**
-	 * Sets all values of this group
-	 *
-	 * @param raw_data the raw array of values
-	 * @returns Ok if success, Err if length mismatch or nullish values exists
-	 */
-	public set_values(raw_data: Any[]): Result<null, string> {
-		if (raw_data.length != this.length)
-			return err(
-				`ASSERT: Data length does not match ${raw_data.length}, ${this.length}`,
-			);
-
-		for (let i = 0; i < this.length; i++) {
-			const v = this[i];
-			const r = raw_data[i];
-			if (v == undefined || r == undefined)
-				return err(`ASSERT: Value is Undefined while existing in array\n`);
-			v.value = r;
-		}
-
-		return ok(null);
 	}
 
 	/**

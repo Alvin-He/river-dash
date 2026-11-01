@@ -1,4 +1,5 @@
 import { Result, err, ok } from "neverthrow";
+import "temporal-polyfill/global";
 import * as zod from "zod";
 import {
 	DataTypes,
