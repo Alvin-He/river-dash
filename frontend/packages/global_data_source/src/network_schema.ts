@@ -7,6 +7,8 @@ import {
 	NetworkStreamMessageType,
 } from "./literals.ts";
 
+export const SCHEMA_PROTO = "RiverDash.pubsub.v1";
+
 export function zod_parse<S extends zod.ZodType>(
 	schema: S,
 	value: unknown,

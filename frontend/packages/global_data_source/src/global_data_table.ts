@@ -4,7 +4,7 @@ import { TopicRead, TopicRW, type TopicAny } from "./topic.ts";
 import {
 	NetworkStreamMessage,
 	NetworkTopicStream,
-	TransportNothing,
+	TransportWebsocket,
 	type Transport,
 } from "./network_stream.ts";
 import type {
@@ -608,7 +608,9 @@ export class EventTopicInitialized extends Event {
 /**
  * Global {@link GlobalDataTable} Instance. Use this object unless you need a custom table.
  */
-export const GDT: GlobalDataTable<TransportNothing> =
-	new GlobalDataTable<TransportNothing>(
-		new NetworkTopicStream(new TransportNothing()),
+export const GDT: GlobalDataTable<TransportWebsocket> =
+	new GlobalDataTable<TransportWebsocket>(
+		new NetworkTopicStream(
+			new TransportWebsocket(new URL("ws://127.0.0.1:9090/api/ws")),
+		),
 	);

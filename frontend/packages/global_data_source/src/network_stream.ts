@@ -5,6 +5,7 @@ import type {
 } from "./network_serialize.ts";
 import {
 	NetworkStreamMessage_s,
+	SCHEMA_PROTO,
 	zod_parse,
 	type NetworkStreamMessage_st,
 } from "./network_schema.ts";
@@ -64,6 +65,98 @@ export class TransportNothing implements Transport {
 		return new Promise((r) => {
 			setTimeout(() => r(ok([])), 100);
 		});
+	}
+}
+
+export class TransportWebsocket implements Transport {
+	public static readonly PROTOS = [SCHEMA_PROTO];
+
+	declare private m_endpoint: URL;
+	declare private m_socket: WebSocket;
+	declare private m_data_queue: Blob[];
+	declare private m_awaiting_receive: [
+		(queue: Blob[]) => Promise<void>,
+		(reason: string) => void,
+	][];
+
+	public constructor(endpoint: URL) {
+		this.m_endpoint = endpoint;
+
+		this.connect();
+	}
+
+	public connect() {
+		this.m_socket = new WebSocket(this.m_endpoint, TransportWebsocket.PROTOS);
+		this.m_socket.binaryType = "blob";
+		this.m_awaiting_receive = [];
+		this.m_data_queue = [];
+
+		this.m_socket.onclose = (ev) => {
+			if (ev.wasClean)
+				console.log(
+					`Connection to ${this.m_endpoint} closed with code: ${ev.code}; reason: ${ev.reason}`,
+				);
+			else console.log(`Connection to ${this.m_endpoint} closed unexpectedly`);
+
+			this.try_reconnect();
+		};
+
+		this.m_socket.onerror = () => {
+			console.log(`Connection to ${this.m_endpoint} closed due to an error.`);
+
+			this.try_reconnect();
+		};
+
+		this.m_socket.onopen = () => {
+			console.log(`Connection to ${this.m_endpoint} established.`);
+		};
+
+		this.m_socket.onmessage = (ev) => {
+			this.m_data_queue.push(ev.data as Blob);
+
+			void this.m_awaiting_receive.shift()?.[0](this.m_data_queue);
+			this.m_data_queue = [];
+		};
+	}
+
+	public send_data(data: string): Promise<Result<void, string>> {
+		return new Promise((r) => {
+			try {
+				this.m_socket.send(data);
+				r(ok());
+			} catch (e) {
+				r(err(`Failed to send with error: ${String(e)}`));
+			}
+		});
+	}
+
+	public receive_data(): Promise<Result<string[], string>> {
+		return new Promise((resolve) => {
+			this.m_awaiting_receive.push([
+				async (queue) => {
+					const parsed_data: string[] = [];
+					for (const i of queue) {
+						parsed_data.push(await i.text());
+					}
+
+					resolve(ok(parsed_data));
+				},
+				(r) => resolve(err(r)),
+			]);
+		});
+	}
+
+	private try_reconnect() {
+		for (const i of this.m_awaiting_receive) {
+			i[1]("Connection Closed");
+		}
+		this.m_awaiting_receive = [];
+		this.m_data_queue = [];
+
+		const wait_ms = Math.random() * 1000;
+		console.log(`Reconnecting in ${wait_ms} ms`);
+
+		setTimeout(() => this.connect(), wait_ms);
 	}
 }
 
