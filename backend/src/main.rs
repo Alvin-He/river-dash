@@ -2,6 +2,7 @@
 	Structure guide
 	1. Using tokio & axum for the web framework. This lets us set up routing
 	2. Using Serde for converting to and from JSON. Lets us (de)serialize data
+	3. sqlx lets us interface with our database file
 */
 
 use axum::{
@@ -15,30 +16,13 @@ use nile_common::comms::stream::{client::StreamClient, raw::StreamEvent};
 use sqlx::SqlitePool;
 
 mod sql;
+
 mod tasks;
 
-#[derive(Clone)]
-struct AppState {
-	db: SqlitePool,
-}
-
-/*
-	Data stream API
-*/
-
+/// Connects to database and opens port for frontend connection
 #[tokio::main]
 async fn main() {
 	let pool = sql::connect().await.expect("database connection failed");
-
-	// establish connection to nile stand
-	let nile_connection =
-		StreamClient::connect("127.0.0.1:9090").expect("NILE Common connection failed!");
-
-	// set up stand event processor
-	let nile_client = tasks::nile_client_receive::NileClient::new(nile_connection);
-
-	// repeatedly call recv to get data
-	// nile_client.get_stream_messages().recv().await?
 
 	let app = Router::new()
 		.route("/", get(|| async { "Hello, World!" }))
@@ -47,9 +31,6 @@ async fn main() {
 		.with_state(AppState { db: pool });
 
 	let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-
-	// run stand event processor
-	tokio::spawn(nile_client.run_green_thread());
 
 	println!("Listening on http://localhost:3000");
 	axum::serve(listener, app).await.unwrap();
