@@ -215,7 +215,7 @@ export class GlobalDataTable<T extends Transport> extends EventTarget {
 		topic_stream.set_on_msg((msg) => {
 			if (msg.type === NetworkStreamMessageType.Declare) {
 				TopicRegistered.network_deserialize_declare(msg.data as object).match(
-					(t) => this.declear_new_topic(t),
+					(t) => this.declare_new_topic(t),
 					(e) => console.log(e),
 				);
 			} else {
@@ -383,7 +383,7 @@ export class GlobalDataTable<T extends Transport> extends EventTarget {
 			init_ts,
 		);
 
-		this.declear_new_topic(topic);
+		this.declare_new_topic(topic);
 
 		// is topic initialized with value
 		if (init_ts != undefined) {
@@ -463,7 +463,7 @@ export class GlobalDataTable<T extends Transport> extends EventTarget {
 	}
 
 	// called when adding a new topic to the registry
-	private declear_new_topic(entry: TopicRegistered) {
+	private declare_new_topic(entry: TopicRegistered) {
 		this.m_topic_infos.set(entry.info.name, entry.info);
 		this.m_topic_registry.set(entry.info.name, entry);
 
