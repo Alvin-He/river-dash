@@ -49,11 +49,34 @@ export class NetworkStreamMessage implements NetworkSerDeclare {
 }
 NetworkStreamMessage satisfies NetworkDeDeclare<NetworkStreamMessage>;
 
-export class NetworkTopicStream extends EventTarget {
-	declare private m_msg_cb: StreamMsgCallback | undefined;
+export interface Transport {
+	send_data(data: string): Promise<Result<void, string>>;
+	receive_data(): Promise<Result<string[], string>>;
+}
 
-	public constructor() {
-		super();
+export class TransportNothing implements Transport {
+	public send_data(_data: string): Promise<Result<void, string>> {
+		return new Promise((r) => {
+			r(ok());
+		});
+	}
+	public receive_data(): Promise<Result<string[], string>> {
+		return new Promise((r) => {
+			setTimeout(() => r(ok([])), 100);
+		});
+	}
+}
+
+export class NetworkTopicStream<T extends Transport> {
+	declare private m_msg_cb: StreamMsgCallback | undefined;
+	declare private m_transport: T;
+	declare private m_receiving: AbortController;
+	declare private m_receive_task: Promise<void> | undefined;
+
+	public constructor(transport: T) {
+		this.m_transport = transport;
+		this.m_receiving = new AbortController();
+		this.m_receive_task = undefined;
 	}
 
 	public stream_send_message(
@@ -69,11 +92,75 @@ export class NetworkTopicStream extends EventTarget {
 		console.log("Stream message", msg);
 		console.log("Serialized: ", serialized);
 
+		this.m_transport.send_data(serialized).then(
+			(r) => {
+				if (r)
+					r.match(
+						() => undefined,
+						(e) => {
+							console.log(`Send msg error. Reason ${e}`);
+						},
+					);
+			},
+			(e) => {
+				console.log(`Failed to send msg. Reason ${e}`);
+			},
+		);
+
 		return ok(null);
 	}
 
 	public set_on_msg(cb: StreamMsgCallback | undefined) {
 		this.m_msg_cb = cb;
+	}
+
+	public start() {
+		this.stop();
+		console.log("Start Receive");
+
+		this.m_receiving = new AbortController();
+		void this.get_new_msgs();
+	}
+
+	public stop() {
+		this.m_receiving.abort();
+	}
+
+	private async get_new_msgs() {
+		const abort_controller = this.m_receiving;
+		let msgs: string[] = [];
+		while (!abort_controller.signal.aborted) {
+			console.log("Receive task run");
+			for (const msg of msgs) {
+				let deserialized: unknown;
+				try {
+					deserialized = JSON.parse(msg) as unknown;
+				} catch (error: unknown) {
+					console.log(`Deserialize: ${String(error)}`);
+					continue;
+				}
+
+				zod_parse(NetworkStreamMessage_s, deserialized)
+					.andThen((data) =>
+						NetworkStreamMessage.network_deserialize_declare(data),
+					)
+					.match(
+						(msg) => {
+							if (this.m_msg_cb) this.m_msg_cb(msg);
+						},
+						(e) =>
+							console.log(
+								`PARSE: Error occurred whiling parsing new message: ${e}`,
+							),
+					);
+			}
+
+			// this is here so that if aborted the new data is discarded
+			(await this.m_transport.receive_data()).match(
+				(m) => (msgs = m),
+				(e) => console.log(`Error while receiving. Reason: ${e}`),
+			);
+		}
 	}
 }
 

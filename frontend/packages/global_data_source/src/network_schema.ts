@@ -100,18 +100,20 @@ export const TaggedUnion_us = zod.object({
 export type TaggedUnion_ut = zod.infer<typeof TaggedUnion_us>;
 
 export const Enum_ds = zod.object({
-	variants: zod.map(zod.number(), zod.string()),
+	variants: zod.array(zod.tuple([zod.number(), zod.string()])),
 });
 export type Enum_dt = zod.infer<typeof Enum_ds>;
 
 export const ADT_ds = zod.object({
-	variants: zod.map(
-		zod.number(),
-		zod.object({
-			name: zod.string(),
-			type: zod.enum(DataTypes),
-			value: zod.unknown(),
-		}),
+	variants: zod.array(
+		zod.tuple([
+			zod.number(),
+			zod.object({
+				name: zod.string(),
+				type: zod.enum(DataTypes),
+				value: zod.unknown(),
+			}),
+		]),
 	),
 });
 export type ADT_dt = zod.infer<typeof ADT_ds>;
