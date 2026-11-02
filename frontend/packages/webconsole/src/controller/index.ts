@@ -8,3 +8,6 @@ export type { OperatorEvent } from "./OperatorEventLog";
 export { useStandMode } from "./useStandMode";
 export { OPERATING_MODES, VALVES, TOPICS } from "./topics";
 export type { OperatingMode, ValveId, ValveStates, TopicReader, TopicWriter } from "./topics";
+
+export { evaluateModeTransition } from "./modeRules";
+export type { ModeTransitionAssessment } from "./modeRules";

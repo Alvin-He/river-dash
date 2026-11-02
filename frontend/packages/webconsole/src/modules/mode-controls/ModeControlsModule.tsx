@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ModuleFrame } from "../../components/ModuleFrame";
 import { canRequestValve } from "../../controller/UIController";
+import { evaluateModeTransition } from "../../controller/modeRules";
 import {
   useStandMode, OPERATING_MODES, VALVES, type UIController,
   type OperatingMode, type ValveStates
@@ -31,10 +32,14 @@ export function ModeControlsModule({ controller, isAffected = false }: Props) {
       <div className={styles.section}><span className={styles.label}>STAND-REPORTED MODE</span><strong className={styles.value}>{mode ?? "UNKNOWN"}</strong></div>
       <p className={styles.note}>Requests only. Reported mode and valve positions come from separate stand topics. SAFE is not a guarantee that every valve closes.</p>
       <div className={styles.buttons}>
-        {OPERATING_MODES.map((target) => <button key={target} type="button"
-          className={target === "SAFE" ? styles.safeButton : styles.modeButton}
-          disabled={target !== "SAFE" && (!mode || mode === target)}
-          onClick={() => requestMode(target)}>Request {target.replaceAll("_", " ")}</button>)}
+        {OPERATING_MODES.map((target) => {
+          const assessment = evaluateModeTransition(mode, target, valves);
+          return <button key={target} type="button"
+            className={target === "SAFE" ? styles.safeButton : styles.modeButton}
+            disabled={!assessment.eligible}
+            title={assessment.reasons.join("; ") || undefined}
+            onClick={() => requestMode(target)}>Request {target.replaceAll("_", " ")}</button>;
+        })}
       </div>
       <strong className={styles.label}>VALVE CONTROLS · REPORTED STATE</strong>
       <div className={styles.valveList}>

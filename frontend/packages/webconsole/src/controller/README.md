@@ -7,8 +7,9 @@ This implementation runs with **mock topics only**. It does not connect to hardw
 ## Responsibilities
 
 - `valves.ts`: seven canonical `nile-common` two-byte valve handles and descriptive groups; no actuation logic.
+- `modeRules.ts`: pure, advisory entry/exit requirement evaluator based on the NILE console specification; never actuates valves.
 - `topics.ts`: typed contracts for mode reports, mode requests, valve reports, valve requests, and command responses.
-- `UIController.ts`: interface consumed by modules; publishes requests but does not manufacture acknowledgments or reported states. Also validates provisional UI valve availability.
+- `UIController.ts`: interface consumed by modules; checks mock transition eligibility before publishing mode requests, but does not manufacture acknowledgments or reported states. Also validates provisional UI valve availability.
 - `MockTopicStore.ts`: in-memory topic snapshots and listener management; replace with a real GDT adapter.
 - `MockStand.ts`: deliberately manual simulation of reported modes, reported valve states, and accepted/rejected responses. An accepted mock response does **not** change the reported physical state.
 - `OperatorEventLog.ts`: bounded in-memory session log; it is not persistent storage.
@@ -34,9 +35,9 @@ This implementation runs with **mock topics only**. It does not connect to hardw
 
 ## Before hardware integration
 
-The team must approve real valve IDs, mode transition conditions, backend command schema, command status lifecycle (queued/sent/accepted/rejected/completed/timed-out), report freshness and disconnection behavior, fire controls and authorization, priority of SAFE, durable logging and replay. The backend/stand must enforce all safety interlocks; frontend restrictions are advisory UX. A real GDT adapter must preserve topic snapshots, unsubscribe behavior and data type conversion. The current operator event log has a 500-entry session limit and does not persist to disk; backend logging is required for the actual operational audit trail.
+The team must confirm transition sequencing and mode authority, backend command schema, command status lifecycle (queued/sent/accepted/rejected/completed/timed-out), report freshness and disconnection behavior, fire controls and authorization, priority of SAFE, durable logging and replay. The backend/stand must enforce all safety interlocks; frontend restrictions are advisory UX. A real GDT adapter must preserve topic snapshots, unsubscribe behavior and data type conversion. The current operator event log has a 500-entry session limit and does not persist to disk; backend logging is required for the actual operational audit trail.
 
-Automated tests are deferred as requested. Build and manually review in the browser before creating the PR.
+The policy tests in `modeRules.test.ts` are simulation-only and do not validate hardware behavior.
 
 ## Valve mapping (step 1)
 
@@ -61,6 +62,38 @@ report (five fields, with duplicated labels and missing vents), so the UI must
 show missing reports as `UNKNOWN`. In particular, neither the SAFE command nor
 a cleared DSUB output state proves that all physical valves are closed.
 
-Next step (not included here): a separately reviewed, simulation-only mode
-transition policy. Nothing in this change modifies the NILE repos or sends
-commands to the stand.
+## Mode eligibility (step 2)
+
+`evaluateModeTransition(reportedMode, requestedMode, valveReports)` is a pure
+function. The controller calls it before publishing a mock mode request, and
+Mode Controls calls it to disable ordinary ineligible transitions and expose
+explanations in button tooltips. The current **reported** mode remains
+unchanged until the stand simulator publishes a separate report.
+
+These are direct interpretations of the NILE console specification, Controls
+(page 5):
+
+| Mode | Entry requirement | Exit requirement |
+| --- | --- | --- |
+| SAFE | Bypasses ordinary transition requirements | None specified |
+| CHECKOUT | None specified | None specified |
+| OX_FILL | All seven valves CLOSED | All seven valves CLOSED |
+| PRESSURIZATION_FIRE | Pressure, run and oxidizer fill valves CLOSED; vents OPEN | Run valves CLOSED |
+
+If a required valve report is missing or `UNKNOWN`, it **does not** satisfy a
+condition. Normal transitions also require a known reported mode. SAFE remains
+requestable even with no telemetry, but this does not prove the request was
+received, that the stand is safe, or that any valve has moved.
+
+**No sequencing is performed.** In particular, OX_FILL's exit requirement
+(all closed) and PRESSURIZATION_FIRE's entry requirement (vents open) are
+incompatible in one snapshot. The frontend cannot invent a valve-transition
+procedure. It will leave this direct transition unavailable until an approved
+stand-side procedure exists. The real NILE stand has no reported operating-mode
+state and the `Control` protocol has no `SetMode` command; these mock mode
+requests cannot control physical hardware. The stand and backend remain the
+only possible authorities for real interlocks and command execution.
+
+Next: expand the standalone simulator with explicit, testable mock responses
+and transition reporting (separate patch). No external NILE repository is
+modified.

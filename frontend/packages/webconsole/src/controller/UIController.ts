@@ -1,3 +1,4 @@
+import { evaluateModeTransition } from "./modeRules";
 import { isOperatingMode, isValveId, TOPICS, type OperatingMode,
   type TopicReader, type TopicWriter, type Unsubscribe, type ValveId,
   type ValveStates, type CommandResponse } from "./topics";
@@ -48,7 +49,14 @@ export class TopicUIController implements UIController {
   }
   requestMode(mode: OperatingMode): void {
     if (!isOperatingMode(mode)) throw new Error("Unrecognized stand mode");
-    // SAFE intentionally does not require the previous mode's ordinary exit conditions.
+    // Advisory only. The mock topic does not represent an authoritative stand command.
+    // SAFE bypasses ordinary mode requirements even if reports are unavailable.
+    const assessment = evaluateModeTransition(this.getReportedMode(), mode, this.getValveStates());
+    if (!assessment.eligible) {
+      const reason = assessment.reasons.join("; ");
+      this.events.record("SYSTEM", `Mode request not sent: ${reason}`, "info");
+      throw new Error(reason);
+    }
     const id = this.commandId();
     this.writer.publish(TOPICS.requestedMode, { id, mode });
     this.events.record("REQUEST", `Mode change requested: ${mode} (not confirmed)`, "info", id);
