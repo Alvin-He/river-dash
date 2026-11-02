@@ -3,46 +3,93 @@ import { ModuleFrame } from "../../components/ModuleFrame";
 import type { EventKind, OperatorEventLog } from "../../controller/OperatorEventLog";
 import styles from "./OperatorEventsModule.module.css";
 
-interface Props { log: OperatorEventLog; isAffected?: boolean }
+interface Props {
+  log: OperatorEventLog;
+  isAffected?: boolean;
+}
+
 const FILTERS = ["ALL", "REQUEST", "RESPONSE", "REPORT", "SYSTEM"] as const;
 type Filter = (typeof FILTERS)[number];
 
-/** Operator-visible event history; the backend remains responsible for durable logging. */
-export function OperatorEventsModule({log,isAffected=false}: Props) {
+/**
+ * Displays the in-memory operator event history.
+ *
+ * Events are recorded by the shared controller/log; filtering affects only this
+ * view. The backend is responsible for persistent logging and replay.
+ */
+export function OperatorEventsModule({ log, isAffected = false }: Props) {
+  // Subscribe to the shared log so new command and stand events trigger renders.
   const entries = useSyncExternalStore(
-    (callback) => log.subscribe(callback), () => log.snapshot(), () => [],
+    (onChange) => log.subscribe(onChange),
+    () => log.snapshot(),
+    () => [],
   );
-  const [filter,setFilter] = useState<Filter>("ALL");
-  const [query,setQuery] = useState("");
-  const visible = useMemo(() => entries.filter((entry) =>
-    (filter === "ALL" || entry.kind === filter as EventKind) &&
-    `${entry.message} ${entry.commandId ?? ""}`.toLowerCase().includes(query.toLowerCase()),
-  ),[entries,filter,query]);
-  function downloadCsv() {
-    const csvValue = (value: string) => `"${value.replaceAll('"','""')}"`;
-    const rows = ["timestamp,kind,severity,command_id,message", ...entries.map((event) =>
-      [event.occurredAt,event.kind,event.severity,event.commandId ?? "",event.message].map(csvValue).join(","))];
-    const url = URL.createObjectURL(new Blob([rows.join("\r\n")], {type:"text/csv;charset=utf-8"}));
-    const link = document.createElement("a"); link.href=url; link.download="riverdash-operator-events.csv";
-    link.click(); URL.revokeObjectURL(url);
-  }
-  return <ModuleFrame title="Operator event log" status="warning" statusLabel="Session only" className={isAffected ? "affected-module" : ""}>
-    <div className={styles.container}>
-      <div className={styles.filters}>
-        <select aria-label="Filter event type" value={filter} onChange={e=>setFilter(e.target.value as Filter)}>
-          {FILTERS.map(value=><option key={value} value={value}>{value}</option>)}
-        </select>
-        <input aria-label="Search events" placeholder="Search events" value={query} onChange={e=>setQuery(e.target.value)}/>
-        <button onClick={downloadCsv} type="button">CSV</button>
+  const [filter, setFilter] = useState<Filter>("ALL");
+  const [query, setQuery] = useState("");
+
+  const visibleEvents = useMemo(() => {
+    const searchText = query.trim().toLowerCase();
+    return entries.filter((event) => {
+      const matchesKind = filter === "ALL" || event.kind === (filter as EventKind);
+      const searchableText = `${event.message} ${event.commandId ?? ""}`.toLowerCase();
+      return matchesKind && searchableText.includes(searchText);
+    });
+  }, [entries, filter, query]);
+
+  return (
+    <ModuleFrame
+      title="Operator event log"
+      status="idle"
+      statusLabel="Session history"
+      className={isAffected ? "affected-module" : ""}
+    >
+      <div className={styles.container}>
+        <div className={styles.filters}>
+          <select
+            aria-label="Filter event type"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value as Filter)}
+          >
+            {FILTERS.map((value) => (
+              <option key={value} value={value}>
+                {value === "ALL" ? "All events" : value}
+              </option>
+            ))}
+          </select>
+          <input
+            aria-label="Search events"
+            placeholder="Search messages / IDs"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+
+        {/* Keep this summary visible even when a small panel clips its event list. */}
+        <div className={styles.summary} aria-live="polite">
+          {visibleEvents.length} of {entries.length} events
+          <span>Session only</span>
+        </div>
+
+        <ol className={styles.entries} aria-label="Operator event history">
+          {visibleEvents.length === 0 && (
+            <li className={styles.empty}>
+              {entries.length === 0 ? "No events recorded yet" : "No matching events"}
+            </li>
+          )}
+          {visibleEvents.map((event) => (
+            <li key={event.id} className={styles[event.severity]}>
+              <div className={styles.meta}>
+                <time dateTime={event.occurredAt}>
+                  {new Date(event.occurredAt).toLocaleTimeString()}
+                </time>
+                <strong>{event.kind}</strong>
+                {event.commandId && <span>{event.commandId}</span>}
+              </div>
+              <span className={styles.message}>{event.message}</span>
+            </li>
+          ))}
+        </ol>
       </div>
-      <p className={styles.note}>Requests, simulated responses, and stand reports are distinct. This log is not persistent.</p>
-      <ol className={styles.entries} aria-live="polite">
-        {visible.length === 0 && <li>No matching events</li>}
-        {visible.map(event=><li key={event.id} className={styles[event.severity]}>
-          <div><time dateTime={event.occurredAt}>{new Date(event.occurredAt).toLocaleTimeString()}</time> · {event.kind}{event.commandId ? ` · ${event.commandId}`:""}</div>
-          <span>{event.message}</span>
-        </li>)}
-      </ol>
-    </div>
-  </ModuleFrame>;
+    </ModuleFrame>
+  );
 }

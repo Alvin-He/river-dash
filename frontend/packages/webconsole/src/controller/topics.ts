@@ -1,4 +1,4 @@
-/** Mock topic contracts. Confirm valve identifiers and payloads with stand/backend owners. */
+/** Mock topic contracts. Valve IDs match nile-common; topic payloads remain demo-only. */
 export const TOPICS = {
   reportedMode: "stand/mode",
   requestedMode: "stand/mode/request",
@@ -13,24 +13,16 @@ export function isOperatingMode(value: unknown): value is OperatingMode {
   return OPERATING_MODES.some((mode) => mode === value);
 }
 
-/** Demo identifiers, NOT validated against the physical stand's valve map. */
-export const VALVES = [
-  { id: "OX_FILL", label: "Ox fill" },
-  { id: "OX_VENT", label: "Ox vent" },
-  { id: "FUEL_RUN", label: "Fuel run" },
-  { id: "OX_RUN", label: "Ox run" },
-  { id: "PRESSURANT", label: "Pressurant" },
-] as const;
-export type ValveId = (typeof VALVES)[number]["id"];
+// Canonical valve identifiers from nile-common (see valves.ts).
+export { VALVES, isValveId } from "./valves";
+export type { ValveId } from "./valves";
+import type { ValveId } from "./valves";
+
 export type ValveState = "OPEN" | "CLOSED" | "UNKNOWN";
 export type ValveStates = Record<ValveId, ValveState>;
 export type ValveCommand = { id: string; valve: ValveId; target: "OPEN" | "CLOSED" };
 export type ModeCommand = { id: string; mode: OperatingMode };
 export type CommandResponse = { id: string; accepted: boolean; message: string };
-export function isValveId(value: string): value is ValveId {
-  return VALVES.some((valve) => valve.id === value);
-}
-
 export type TopicValues = {
   [TOPICS.reportedMode]: OperatingMode;
   [TOPICS.requestedMode]: ModeCommand;

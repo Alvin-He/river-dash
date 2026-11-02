@@ -1,5 +1,5 @@
 {
-  "name": "webconsole",
+  "name": "@river-dash/webconsole",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@river-dash/global-data-source": "^1.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-rnd": "^10.5.2"

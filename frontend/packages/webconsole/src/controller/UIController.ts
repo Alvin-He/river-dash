@@ -72,6 +72,6 @@ export class TopicUIController implements UIController {
 /** Provisional frontend availability; not the physical stand's command interlocks. */
 export function canRequestValve(mode: OperatingMode | null, valve: ValveId): boolean {
   if (mode === "CHECKOUT") return true;
-  if (mode === "OX_FILL") return valve === "OX_FILL" || valve === "OX_VENT";
+  if (mode === "OX_FILL") return valve === "OF" || valve === "OV";
   return false;
 }
