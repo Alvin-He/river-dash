@@ -24,7 +24,7 @@ async fn main() {
 
     let database = sql::Database::new(pool);
 
-    // List of usable routes
+    // Showing callable routes
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
         .route("/configs", 
