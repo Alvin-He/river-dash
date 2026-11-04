@@ -1,10 +1,10 @@
-import { evaluateModeTransition } from "./modeRules";
 import { validateFireTiming, type FireTiming } from "./fireTiming";
+import { canRequestValve, evaluateModeTransition } from "./modeRules";
 import {
 	isOperatingMode,
 	isValveId,
 	TOPICS,
-	type CommandResponse,
+	type MockCommandResponse,
 	type OperatingMode,
 	type TopicReader,
 	type TopicWriter,
@@ -13,6 +13,9 @@ import {
 	type ValveStates,
 } from "./topics";
 import type { OperatorEventLog } from "./OperatorEventLog";
+
+// Retain the existing public export for modules that import from UIController.
+export { canRequestValve } from "./modeRules";
 
 /** A request awaiting a mock response or a separate reported state update. */
 export type CommandActivity =
@@ -308,7 +311,7 @@ export class TopicUIController implements UIController {
 		}
 	}
 
-	private recordResponse(response: CommandResponse): void {
+	private recordResponse(response: MockCommandResponse): void {
 		const activity = this.pending.get(response.id);
 		if (activity) {
 			if (response.accepted) {
@@ -378,18 +381,4 @@ export class TopicUIController implements UIController {
 		const snapshot = this.getCommandActivity();
 		for (const listener of [...this.activityListeners]) listener(snapshot);
 	}
-}
-
-/** Provisional UI availability; actual stand permission checks are external. */
-export function canRequestValve(
-	mode: OperatingMode | null,
-	valve: ValveId,
-): boolean {
-	if (mode === "CHECKOUT") return true;
-	if (mode === "OX_FILL") return valve === "OF" || valve === "OV";
-	// NILE spec §3.4: only pressure and vent valves can be manually
-	// actuated in Pressurization / Firing mode. Run/fill remain unavailable.
-	if (mode === "PRESSURIZATION_FIRE")
-		return ["OP", "OV", "FP", "FV"].includes(valve);
-	return false;
 }

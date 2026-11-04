@@ -100,6 +100,9 @@ export function ModeControlsModule({ controller, isAffected = false }: Props) {
 		),
 	};
 	const timingErrors = validateFireTiming(timing);
+	const hasFireInput = Object.values(fireInputs).some(
+		(value) => value.trim().length > 0,
+	);
 	const pendingFire = activity.some((request) => request.kind === "FIRE");
 	const pendingMode = activity.some((request) => request.kind === "MODE");
 	const permittedValves = VALVES.filter(({ id }) => canRequestValve(mode, id));
@@ -293,15 +296,11 @@ export function ModeControlsModule({ controller, isAffected = false }: Props) {
 								</label>
 							))}
 						</div>
-						{timingErrors.length > 0 &&
-							fireInputs.burn_time_micros +
-								fireInputs.ignition_offset_micros +
-								fireInputs.propellants_offset_micros !==
-								"" && (
-								<span className={styles.validation}>
-									{timingErrors.join("; ")}
-								</span>
-							)}
+						{timingErrors.length > 0 && hasFireInput && (
+							<span className={styles.validation}>
+								{timingErrors.join("; ")}
+							</span>
+						)}
 						<button
 							className={styles.fireButton}
 							type="submit"

@@ -30,6 +30,28 @@ const VENT_VALVES = VALVES.filter(({ group }) => group === "VENT").map(
 );
 const OXIDIZER_FILL_VALVE: ValveId = "OF";
 
+/**
+ * Manual valve permissions for each simulated operating mode.
+ *
+ * These permissions come from the NILE console specification, not from the
+ * nile-common command protocol. They are UI/simulator policy, not hardware
+ * authorization. The stand-side command handler remains authoritative.
+ */
+const MANUAL_VALVES_BY_MODE: Record<OperatingMode, readonly ValveId[]> = {
+	SAFE: [],
+	CHECKOUT: ALL_VALVES,
+	OX_FILL: ["OF", "OV"],
+	PRESSURIZATION_FIRE: ["OP", "OV", "FP", "FV"],
+};
+
+/** Whether a manual valve action is available under the mock mode policy. */
+export function canRequestValve(
+	mode: OperatingMode | null,
+	valve: ValveId,
+): boolean {
+	return mode !== null && MANUAL_VALVES_BY_MODE[mode].includes(valve);
+}
+
 /** Collect each unsatisfied requirement; unknown or absent reports never pass. */
 function requireValveStates(
 	reports: ValveReport,

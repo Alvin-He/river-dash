@@ -5,8 +5,10 @@
  * commands. These are identifiers only: the browser does not encode or send
  * physical hardware commands, and valve reports may be unavailable.
  *
- * The `system` and `group` fields are descriptive metadata for upcoming
- * mode-policy work; they do not authorize commands or imply valve state.
+ * The `system` and `group` fields classify valves for the mock mode policy;
+ * they do not authorize hardware commands or imply reported valve state.
+ * The Rust constants spell "OXODIZER"; UI labels use "Oxidizer", while the
+ * two-byte valve handles remain identical to the source protocol.
  */
 export const VALVES = [
 	{

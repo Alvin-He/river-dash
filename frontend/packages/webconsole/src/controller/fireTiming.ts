@@ -8,8 +8,11 @@
  * UI intentionally accepts only that representable subset.
  */
 export interface FireTiming {
+	/** Duration between the last run-valve opening and first run-valve closure. */
 	burn_time_micros: number;
+	/** Ignition time relative to the last run-valve opening; may be negative. */
 	ignition_offset_micros: number;
+	/** Oxidizer run-valve opening time minus fuel run-valve opening time. */
 	propellants_offset_micros: number;
 }
 
@@ -20,6 +23,8 @@ export function validateFireTiming(timing: FireTiming): string[] {
 		!Number.isSafeInteger(timing.burn_time_micros) ||
 		timing.burn_time_micros <= 0
 	) {
+		// Positive duration is a conservative simulator input rule; the Rust
+		// deserializer accepts any u64, including zero.
 		errors.push("Burn time must be a positive whole number of microseconds");
 	}
 	if (!Number.isSafeInteger(timing.ignition_offset_micros)) {
