@@ -8,12 +8,16 @@
 use axum::{
 	Json, Router,
 	extract::{Path, State},
+    middleware::{self,Next},
 	http::StatusCode,
 	routing::{get, post},
 };
 
 use nile_common::comms::stream::{client::StreamClient, raw::StreamEvent};
 use sqlx::SqlitePool;
+
+/// So we can let through if on localhost
+use std::net::SocketAddr;
 
 mod sql;
 
@@ -22,9 +26,27 @@ mod tasks;
 /// Connects to database and opens port for frontend connection
 #[tokio::main]
 async fn main() {
+
+
 	let pool = sql::connect().await.expect("database connection failed");
 
 	let database = sql::Database::new(pool);
+	database.spawn_session_cleanup();
+    /// TODO: leave a header, work with axum middleware here to intercept the token. Use .layer
+    /// Make a cookie too
+	let protected = Router::new()
+		.route(
+			"/configs",
+			get(sql::Database::get_configs).post(sql::Database::post_config),
+		)
+		.route(
+			"/configs/{name}",
+			get(sql::Database::get_config).delete(sql::Database::delete_config),
+		)
+		.route_layer(middleware::from_fn_with_state(
+			database.clone(),
+			sql::Database::require_auth,
+		));
 
 	// Showing callable routes
 	let app = Router::new()
@@ -37,10 +59,18 @@ async fn main() {
 			"/configs/{name}",
 			get(sql::Database::get_config).delete(sql::Database::delete_config),
 		)
+		.merge(protected)
 		.with_state(database);
 
 	// Listen for a client
 	let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 	println!("Listening on http://localhost:3000");
-	axum::serve(listener, app).await.unwrap();
+
+	/// Serve AND see client's address
+	axum::serve(
+		listener,
+		app.into_make_service_with_connect_info::<SocketAddr>(),
+	)
+	.await
+	.unwrap();
 }
