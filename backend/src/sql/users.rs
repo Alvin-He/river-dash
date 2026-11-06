@@ -133,12 +133,12 @@ impl Database {
  
     async fn insert_session(
         &self,
-        token_hash: &str,
+        password_hash: &str,
         user_id: i64,
         expires_at: i64,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query("INSERT INTO users (token_hash, user_id, expires_at) VALUES (?, ?, ?)")
-            .bind(token_hash)
+        sqlx::query("INSERT INTO users (password_hash, user_id, expires_at) VALUES (?, ?, ?)")
+            .bind(password_hash)
             .bind(user_id)
             .bind(expires_at)
             .execute(&self.sql_pool)
@@ -146,20 +146,20 @@ impl Database {
         Ok(())
     }
  
-    async fn session_is_valid(&self, token_hash: &str) -> Result<bool, sqlx::Error> {
+    async fn session_is_valid(&self, password_hash: &str) -> Result<bool, sqlx::Error> {
         let row = sqlx::query_scalar::<_, i64>(
-            "SELECT 1 FROM users WHERE token_hash = ? AND expires_at > ?",
+            "SELECT 1 FROM users WHERE password_hash = ? AND expires_at > ?",
         )
-        .bind(token_hash)
+        .bind(password_hash)
         .bind(now_secs())
         .fetch_optional(&self.sql_pool)
         .await?;
         Ok(row.is_some())
     }
  
-    async fn delete_session(&self, token_hash: &str) -> Result<(), sqlx::Error> {
-        sqlx::query("DELETE FROM users WHERE token_hash = ?")
-            .bind(token_hash)
+    async fn delete_session(&self, password_hash: &str) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM users WHERE password_hash = ?")
+            .bind(password_hash)
             .execute(&self.sql_pool)
             .await?;
         Ok(())
