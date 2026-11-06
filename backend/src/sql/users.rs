@@ -101,7 +101,8 @@ fn is_local(addr: &SocketAddr) -> bool {
     addr.ip().to_canonical().is_loopback()
 }
  
-fn internal<E>(_: E) -> StatusCode {
+fn internal<E: std::fmt::Display>(e: E) -> StatusCode {
+    eprintln!("internal error: {e}");
     StatusCode::INTERNAL_SERVER_ERROR
 }
 
@@ -136,7 +137,7 @@ impl Database {
         user_id: i64,
         expires_at: i64,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)")
+        sqlx::query("INSERT INTO users (token_hash, user_id, expires_at) VALUES (?, ?, ?)")
             .bind(token_hash)
             .bind(user_id)
             .bind(expires_at)
@@ -147,7 +148,7 @@ impl Database {
  
     async fn session_is_valid(&self, token_hash: &str) -> Result<bool, sqlx::Error> {
         let row = sqlx::query_scalar::<_, i64>(
-            "SELECT 1 FROM sessions WHERE token_hash = ? AND expires_at > ?",
+            "SELECT 1 FROM users WHERE token_hash = ? AND expires_at > ?",
         )
         .bind(token_hash)
         .bind(now_secs())
@@ -157,7 +158,7 @@ impl Database {
     }
  
     async fn delete_session(&self, token_hash: &str) -> Result<(), sqlx::Error> {
-        sqlx::query("DELETE FROM sessions WHERE token_hash = ?")
+        sqlx::query("DELETE FROM users WHERE token_hash = ?")
             .bind(token_hash)
             .execute(&self.sql_pool)
             .await?;
@@ -165,7 +166,7 @@ impl Database {
     }
  
     async fn purge_expired_sessions(&self) -> Result<(), sqlx::Error> {
-        sqlx::query("DELETE FROM sessions WHERE expires_at <= ?")
+        sqlx::query("DELETE FROM users WHERE expires_at <= ?")
             .bind(now_secs())
             .execute(&self.sql_pool)
             .await?;
