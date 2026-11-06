@@ -1,3 +1,4 @@
+import { BrandMark } from "../BrandMark/BrandMark";
 import styles from "./ConsoleHeader.module.css";
 
 interface ConsoleHeaderProps {
@@ -25,7 +26,7 @@ export function ConsoleHeader({
 	return (
 		<header className={styles.topbar}>
 			<div className={styles.brand}>
-				<span>N</span>
+				<span className={styles.brandMark} aria-hidden="true"><BrandMark /></span>
 				<b>NILE CONSOLE</b>
 				<small>TS-01 / SOUTH PAD</small>
 			</div>

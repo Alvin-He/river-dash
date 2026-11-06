@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { MOCK_CREDENTIALS, signInWithMockCredentials } from "../../auth/mockAuth";
+import { BrandMark } from "../../components/BrandMark/BrandMark";
 import styles from "./LoginPage.module.css";
 
 export function LoginPage() {
@@ -24,7 +25,7 @@ export function LoginPage() {
 		<main className={`login-screen ${styles.page}`}>
 			<div className={styles.center}>
 				<div className={styles.brand}>
-					<span className={styles.brandMark} aria-hidden="true">N</span>
+					<span className={styles.brandMark} aria-hidden="true"><BrandMark /></span>
 					<div className={styles.brandText}>
 						<strong>NILE CONSOLE</strong>
 						<span>RIVER DASH / OPERATOR INTERFACE</span>
