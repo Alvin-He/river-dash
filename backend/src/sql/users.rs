@@ -38,6 +38,9 @@ use sha2::{Digest, Sha256};
  
 use super::Database;
 
+const SESSION_COOKIE: &str = "session";
+const SESSION_LIFETIME_SECS: i64 = 7 * 24 * 60 * 60;
+
 /// ---------------------
 /// 1. Some helper functions
 /// ---------------------
