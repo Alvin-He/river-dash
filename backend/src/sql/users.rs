@@ -257,11 +257,11 @@ impl Database {
             .map_err(internal)?;
  
         let cookie = Cookie::build((SESSION_COOKIE, token))
-            //.http_only(true)
+            .http_only(false)   // Currently this & https unsupported
             .same_site(SameSite::None) // Currently FE & BE can be on different sites. If that changes, tighten to Strict or Lax
             .path("/")
             .max_age(time::Duration::seconds(SESSION_LIFETIME_SECS))
-            //.secure(true)
+            .secure(false)
             .build();
  
         Ok((jar.add(cookie), StatusCode::NO_CONTENT))
