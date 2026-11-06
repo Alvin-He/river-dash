@@ -32,8 +32,8 @@ async fn main() {
 
 	let database = sql::Database::new(pool);
 	database.spawn_session_cleanup();
-    /// TODO: leave a header, work with axum middleware here to intercept the token. Use .layer
-    /// Make a cookie too
+
+	/// Inner routes after authentication
 	let protected = Router::new()
 		.route(
 			"/configs",
@@ -51,14 +51,9 @@ async fn main() {
 	// Showing callable routes
 	let app = Router::new()
 		.route("/", get(|| async { "Hello, World!" }))
-		.route(
-			"/configs",
-			get(sql::Database::get_configs).post(sql::Database::post_config),
-		)
-		.route(
-			"/configs/{name}",
-			get(sql::Database::get_config).delete(sql::Database::delete_config),
-		)
+		.route("/login", post(sql::Database::login))
+		.route("/logout", post(sql::Database::logout))
+		.route("/setup", post(sql::Database::setup))
 		.merge(protected)
 		.with_state(database);
 
