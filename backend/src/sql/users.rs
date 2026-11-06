@@ -258,7 +258,7 @@ impl Database {
  
         let cookie = Cookie::build((SESSION_COOKIE, token))
             .http_only(false)   // Currently this & https unsupported
-            .same_site(SameSite::None) // Currently FE & BE can be on different sites. If that changes, tighten to Strict or Lax
+            .same_site(SameSite::Lax) // Currently FE & BE can be on different sites. If that changes, tighten to Strict or Lax
             .path("/")
             .max_age(time::Duration::seconds(SESSION_LIFETIME_SECS))
             .secure(false)
