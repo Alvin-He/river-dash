@@ -39,7 +39,7 @@ async fn main() {
 
 	/// CORS layer
 	let cors = CorsLayer::new()
-		.allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()) // your frontend's exact origin
+		.allow_origin("*".parse::<HeaderValue>().unwrap()) // your frontend's exact origin
 		.allow_methods([Method::GET, Method::POST, Method::DELETE])
 		.allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
 		.allow_credentials(true);
