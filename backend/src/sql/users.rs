@@ -258,7 +258,7 @@ impl Database {
  
         let cookie = Cookie::build((SESSION_COOKIE, token))
             .http_only(true)
-            .same_site(SameSite::Strict)
+            .same_site(SameSite::None) // Currently the FE and BE can be on different sites. If that changes, tighten this to SameSite::Strict
             .path("/")
             .max_age(time::Duration::seconds(SESSION_LIFETIME_SECS))
             // .secure(true) // enable once you serve over HTTPS
