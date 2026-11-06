@@ -19,6 +19,10 @@ use sqlx::SqlitePool;
 /// So we can let through if on localhost
 use std::net::SocketAddr;
 
+/// Cookie use
+use tower_http::cors::CorsLayer;
+use axum::http::{HeaderValue, Method, header};
+
 mod sql;
 
 mod tasks;
@@ -32,6 +36,14 @@ async fn main() {
 
 	let database = sql::Database::new(pool);
 	database.spawn_session_cleanup();
+
+	/// CORS layer
+	let cors = CorsLayer::new()
+		.allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()) // your frontend's exact origin
+		.allow_methods([Method::GET, Method::POST, Method::DELETE])
+		.allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+		.allow_credentials(true);
+
 
 	/// Inner routes after authentication
 	let protected = Router::new()
@@ -55,6 +67,7 @@ async fn main() {
 		.route("/logout", post(sql::Database::logout))
 		.route("/setup", post(sql::Database::setup))
 		.merge(protected)
+		.layer(cors)
 		.with_state(database);
 
 	// Listen for a client
