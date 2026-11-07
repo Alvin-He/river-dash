@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { MOCK_CREDENTIALS, signInWithMockCredentials } from "../../auth/mockAuth";
 import { BrandMark } from "../../components/BrandMark/BrandMark";
 import styles from "./LoginPage.module.css";
@@ -9,10 +9,10 @@ export function LoginPage() {
 	const [passwordVisible, setPasswordVisible] = useState(true);
 	const [error, setError] = useState("");
 
-	function handleSubmit(event: FormEvent<HTMLFormElement>) {
+	async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 
-		if (signInWithMockCredentials(username, password)) {
+		if (await signInWithMockCredentials(username, password)) {
 			window.location.assign("/dashboard");
 			return;
 		}
@@ -41,7 +41,7 @@ export function LoginPage() {
 						</p>
 					</div>
 
-					<form onSubmit={handleSubmit} noValidate>
+					<form onSubmit={(e) => handleSubmit(e)} noValidate>
 						<div className={styles.field}>
 							<label htmlFor="login-username">Username</label>
 							<input
