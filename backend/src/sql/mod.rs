@@ -16,6 +16,7 @@ use sqlx::{
 };
 
 pub mod configs;
+pub mod users;
 
 
  /// Connection to the app's persistent state (database)

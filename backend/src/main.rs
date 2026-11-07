@@ -8,12 +8,20 @@
 use axum::{
 	Json, Router,
 	extract::{Path, State},
+    middleware::{self,Next},
 	http::StatusCode,
 	routing::{get, post},
 };
 
 use nile_common::comms::stream::{client::StreamClient, raw::StreamEvent};
 use sqlx::SqlitePool;
+
+/// So we can let through if on localhost
+use std::net::SocketAddr;
+
+/// Cookie use
+use tower_http::cors::CorsLayer;
+use axum::http::{HeaderValue, Method, header};
 
 mod sql;
 
@@ -22,63 +30,55 @@ mod tasks;
 /// Connects to database and opens port for frontend connection
 #[tokio::main]
 async fn main() {
+
+
 	let pool = sql::connect().await.expect("database connection failed");
 
+	let database = sql::Database::new(pool);
+	database.spawn_session_cleanup();
+
+	/// CORS layer
+	let cors = CorsLayer::new()
+		.allow_origin("http://127.0.0.1:5173".parse::<HeaderValue>().unwrap()) // your frontend's exact origin
+		.allow_methods([Method::GET, Method::POST, Method::DELETE])
+		.allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+		.allow_credentials(true);
+
+
+	/// Inner routes after authentication
+	let protected = Router::new()
+		.route(
+			"/configs",
+			get(sql::Database::get_configs).post(sql::Database::post_config),
+		)
+		.route(
+			"/configs/{name}",
+			get(sql::Database::get_config).delete(sql::Database::delete_config),
+		)
+		.route_layer(middleware::from_fn_with_state(
+			database.clone(),
+			sql::Database::require_auth,
+		));
+
+	// Showing callable routes
 	let app = Router::new()
 		.route("/", get(|| async { "Hello, World!" }))
-		.route("/configs", get(get_configs).post(post_config))
-		.route("/configs/{name}", get(get_config).delete(delete_config))
-		.with_state(AppState { db: pool });
+		.route("/login", post(sql::Database::login))
+		.route("/logout", post(sql::Database::logout))
+		.route("/setup", post(sql::Database::setup))
+		.merge(protected)
+		.layer(cors)
+		.with_state(database);
 
+	// Listen for a client
 	let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-
 	println!("Listening on http://localhost:3000");
-	axum::serve(listener, app).await.unwrap();
-}
 
-async fn get_configs(State(state): State<AppState>) -> Result<Json<Vec<sql::Config>>, StatusCode> {
-	return sql::get_all_configs(&state.db)
-		.await
-		.map(Json)
-		.map_err(|e| {
-			eprintln!("get_configs has failed: {e}");
-			StatusCode::INTERNAL_SERVER_ERROR
-		});
-}
-async fn get_config(
-	State(state): State<AppState>,
-	Path(name): Path<String>,
-) -> Result<Json<sql::Config>, StatusCode> {
-	match sql::get_config(&state.db, name).await {
-		Ok(Some(config)) => Ok(Json(config)),
-		Ok(None) => Err(StatusCode::NOT_FOUND),
-		Err(e) => {
-			eprintln!("get_config has failed: {e}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR)
-		}
-	}
-}
-
-async fn post_config(
-	State(state): State<AppState>,
-	Json(config): Json<sql::Config>,
-) -> Result<Json<sql::Config>, StatusCode> {
-	sql::upsert_config(&state.db, &config)
-		.await
-		.map(|_| Json(config))
-		.map_err(|e| {
-			eprintln!("post_config has failed: {e}");
-			StatusCode::INTERNAL_SERVER_ERROR
-		})
-}
-
-async fn delete_config(State(state): State<AppState>, Path(name): Path<String>) -> StatusCode {
-	match sql::delete_config(&state.db, &name).await {
-		Ok(true) => StatusCode::NO_CONTENT,
-		Ok(false) => StatusCode::NOT_FOUND,
-		Err(e) => {
-			eprintln!("delete_config has failed: {e}");
-			StatusCode::INTERNAL_SERVER_ERROR
-		}
-	}
+	/// Serve AND see client's address
+	axum::serve(
+		listener,
+		app.into_make_service_with_connect_info::<SocketAddr>(),
+	)
+	.await
+	.unwrap();
 }

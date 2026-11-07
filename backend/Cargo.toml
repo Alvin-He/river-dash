@@ -13,3 +13,10 @@ anyhow = "1.0"   # For clean error propagation
 dotenvy = "0.15" # For loading .env variables
 serde_json = "1" # Testing purposes
 tempfile = "3"   # Testing purposes (running connect() to sql)
+
+argon2 = { version = "0.5", features = ["std"] }
+sha2 = "0.10"
+base64 = "0.22"
+time = "0.3"
+axum-extra = { version = "0.10", features = ["cookie"] }
+tower-http = { version = "0.6", features = ["cors"] }
