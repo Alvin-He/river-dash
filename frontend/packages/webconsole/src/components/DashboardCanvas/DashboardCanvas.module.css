@@ -1,0 +1,16 @@
+.canvas {
+	width: 100%;
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	padding: var(--dashboard-padding);
+	border-top: 1px solid var(--color-border);
+	background: var(--color-canvas);
+	overscroll-behavior: contain;
+}
+
+.surface {
+	position: relative;
+	width: 100%;
+	min-width: 420px;
+}
