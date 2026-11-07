@@ -16,6 +16,7 @@ use sqlx::{
 };
 
 pub mod configs;
+pub mod users;
 
 
  /// Connection to the app's persistent state (database)
@@ -27,7 +28,7 @@ pub struct Database {
 
 // Initial connection to data.db
 pub async fn connect() -> Result<SqlitePool, sqlx::Error> {
-    std::fs::create_dir_all("database").ok();
+	std::fs::create_dir_all("database").ok();
 
     let options = SqliteConnectOptions::from_str("sqlite:database/data.db")?
         .create_if_missing(true);
@@ -44,11 +45,11 @@ pub async fn connect() -> Result<SqlitePool, sqlx::Error> {
           name TEXT PRIMARY KEY,
           components TEXT NOT NULL
             )",
-        )
-        .execute(&pool)
-        .await?;
+	)
+	.execute(&pool)
+	.await?;
 
-    Ok(pool)
+	Ok(pool)
 }
 
 

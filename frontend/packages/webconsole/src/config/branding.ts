@@ -1,0 +1,1 @@
+export const BRAND_MARK_SRC = "/branding/Single-Tone Logo (SPT Orange).svg";
