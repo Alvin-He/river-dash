@@ -10,7 +10,7 @@ import {
 } from "./auth/authApi";
 import { uiController, standSimulator, operatorEvents } from "./controller/demoController";
 import { useStandMode } from "./controller/useStandMode";
-import { ConsoleHeader } from "./components/ConsoleHeader/ConsoleHeader";
+import { ConsoleMenu } from "./components/ConsoleHeader/ConsoleMenu";
 import { DashboardCanvas } from "./components/DashboardCanvas/DashboardCanvas";
 import { ViewerAccounts } from "./components/ViewerAccounts/ViewerAccounts";
 import { LoginPage } from "./pages/LoginPage/LoginPage";
@@ -71,19 +71,19 @@ function DashboardPage({
 
 	return (
 		<main ref={consoleRef} className="console">
-			<ConsoleHeader
-				role={role}
-				standMode={standMode}
+			<ConsoleMenu
+				accessRole={role}
 				isLocked={isLocked}
 				isFullscreen={isFullscreen}
 				fullscreenSupported={fullscreenSupported}
 				fullscreenError={fullscreenError}
 				onToggleFullscreen={handleToggleFullscreen}
-				onToggleLock={() => setLayoutLocked((locked) => !locked)}
-				onResetLayout={() => setResetSequence((value) => value + 1)}
-				onManageAccounts={() => setManagingAccounts(true)}
-				onSignOut={onSignOut}
+				onToggleLock={isOperator ? () => setLayoutLocked((locked) => !locked) : undefined}
+				onResetLayout={isOperator ? () => setResetSequence((value) => value + 1) : undefined}
+				onManageAccounts={isOperator ? () => setManagingAccounts(true) : undefined}
+				onSignOut={!isOperator ? onSignOut : undefined}
 				signingOut={signingOut}
+				shortcutEnabled={!managingAccounts}
 			/>
 			{signOutError && <p className="auth-sign-out-error" role="alert">{signOutError}</p>}
 			<DashboardCanvas
@@ -94,6 +94,12 @@ function DashboardPage({
 				simulator={standSimulator}
 				eventLog={operatorEvents}
 			/>
+			{/* The operational context stays visible even when the menu/icon is hidden. */}
+			<div className="console-operating-status" role="status" aria-live="polite">
+				<strong>{isOperator ? "LOCAL OPERATOR" : "VIEW ONLY"}</strong>
+				<span>SIMULATION · NO HARDWARE</span>
+				<span>MODE: {standMode ?? "UNKNOWN"}</span>
+			</div>
 			{isOperator && managingAccounts && (
 				<ViewerAccounts role={role} onClose={() => setManagingAccounts(false)} />
 			)}

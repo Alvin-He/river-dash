@@ -13,7 +13,7 @@ npm run dev --workspace=@river-dash/webconsole
 ```
 
 - On the host computer, open `http://127.0.0.1:5173` to use the **operator**
-  dashboard. Click **Create viewer** to create login credentials in the backend.
+  dashboard. Open **Viewer management** from the floating menu (`Shift+M`) to create login credentials in the backend.
 - On another device on the LAN, open `http://<host-LAN-IP>:5173`. This
   automatically shows the **viewer** sign-in screen without a separate
   viewer-mode startup command.
@@ -56,11 +56,26 @@ interactions and persistence.
 The dashboard fills the browser viewport and adapts module positions and sizes
 to narrower windows. Telemetry and graphs use demonstration streams. The
 operator has mock mode/valve controls, a stand simulator, and an in-memory event
-log; the P&ID module is a placeholder. The header identifies demo data. Viewer
+log; the P&ID module is a placeholder. A small, always-visible status badge identifies simulation/no-hardware mode and the current operating mode; it does not reserve dashboard height. Viewer
 browsers do not share the operator's simulated state.
 
 ### Fullscreen
 
-On `/dashboard`, the header's **Full screen** action requests fullscreen mode.
+On `/dashboard`, use **Full screen** in the floating menu (`Shift+M`) to request fullscreen mode.
 Use **Exit full screen** or **Esc** to return to the windowed view. Fullscreen
 changes the available viewport but does not reset the saved layout.
+
+### Floating menu and access roles
+
+The former 48px top bar is removed. The menu icon floats over the dashboard
+near the upper-right corner and does not affect module geometry. Use `Shift+M`
+to toggle its dropdown; `Escape` or an outside click closes it. The dropdown
+has independent toggles for icon visibility and click availability; `Shift+M`
+works regardless. Preferences intentionally reset after refresh so the menu
+is recoverable. Text-entry fields do not trigger the shortcut.
+
+Operators can lock/edit the dashboard, reset its arrangement when unlocked,
+and open Viewer management (including remote-view controls). Viewers cannot
+access these actions, but can enter fullscreen and sign out. Access to actual
+backend operations remains enforced by the existing gateway/backend checks;
+menu visibility alone is not an authorization boundary.
