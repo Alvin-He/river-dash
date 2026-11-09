@@ -1,0 +1,26 @@
+River Dash local setup
+=================================================
+
+1. Start the Rust backend on the hosting PC (port 3000).
+2. From frontend/, run: npm install
+3. From frontend/, run: npm run dev --workspace=@river-dash/webconsole
+4. On the host PC, open: http://127.0.0.1:5173
+5. Use Viewer management to create viewer accounts.
+
+Optional public viewing:
+  - In Viewer management, choose Enable for remote viewing.
+  - The frontend host prepares a viewer-only server on 127.0.0.1:4174 and
+    starts Cloudflare Quick Tunnel automatically.
+  - Copy the temporary URL shown in the menu. Cloudflare is not required
+    for the operator dashboard or local simulator.
+
+First-use Windows x64 installations can download the official pinned
+cloudflared executable. See frontend/packages/webconsole/CLOUDFLARE_TUNNEL.md
+for manual binary placement and troubleshooting.
+
+Do not expose Rust port 3000 publicly. The backend includes account and
+configuration writes even though stand operation is currently simulated.
+Viewer data remains local mock data, not a mirror of the operator's session.
+
+For a fresh database, stop the backend first and review
+BACKEND_ACCESS_BOUNDARY.md before running tools/init_local_database.py.

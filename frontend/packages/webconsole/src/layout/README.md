@@ -85,7 +85,7 @@ work.
 8. Only committed layouts are persisted in `localStorage`, checked on load;
    Reset layout restores defaults when editing is unlocked.
 
-## Validation for the MVP
+## Manual verification
 
 There is currently no automated layout test file or `test:layout` npm script.
 The interactions require manual verification.
@@ -95,5 +95,5 @@ installing dependencies. Manually exercise each resize handle, snapping and
 glow, crowded pushes, lock mode, window narrowing, scrolling, reload/restore,
 and Reset layout before merging.
 
-For a complete feature example and CSS ownership table, see
-[`MODULE_DEVELOPER_GUIDE.md`](../../../../../MODULE_DEVELOPER_GUIDE.md).
+For integration details, see [module registration](../modules/README.md) and
+[shared component contracts](../components/README.md).

@@ -1,14 +1,10 @@
-# Contributing
+# Contributing to River Dash
 
-Hello there, welcome to the contributing guide & guidelines for contributing to River Dash.
-
-First off, thank you for your interest in working on River Dash and all of it's associated components. Welcome!
-
-This file describes pretty much all you need to know to begin contributing to River Dash. The River Dash project is governed by our [Contributor License Agreement](##Contributor-License-Agreement). **_Please Please Please_** make sure you read this agreement before contributing. You can find out more details in the [How to Contribute](##how-to-contribute) section.
-
-**If this is the first time you are contributing to River Dash or any of it's components, PLEASE add your name and email to [contributors.md](./contributors.md) to show that you have read and agreed to this contribution guideline.**
-
-Aside from that, most of what's here is more so guidelines than rules. If you have any suggestions, please let us know through a new pull request!
+This guide explains the development workflow, coding standards, and contributor
+agreement for River Dash. Review the [Contributor License Agreement](#contributor-license-agreement)
+before submitting a contribution. First-time contributors should add their name
+and contact information to [contributors.md](./contributors.md) if they agree to
+the project contribution terms. Share suggestions through issues or pull requests.
 
 ## What Should You Know Before Contributing
 
@@ -49,11 +45,11 @@ There are many ways to contribute to River Dash. In this section we'll cover two
 
 Bug reports are a big part of how we find out what's wrong with River Dash. It can be as important as submitting new features or writing code!
 
-All of our bugs are tracked via GitHub Issues. Before you submit a bug, we recommend you check out our Issues pages. Or hit up the all mighty search engines or AI LLM services to see if there is already solutions to your issue.
+All of our bugs are tracked via GitHub Issues. Before you submit a bug, we recommend you check out our Issues pages. Search for an existing issue or known solution before opening a duplicate report.
 
-More than often you'll find that someone else have already experienced your issue. In which case it will be more effective to add your details to the conversation so our developers can better understand what's going on.
+Often, another contributor has already encountered the same issue. In which case it will be more effective to add your details to the conversation so our developers can better understand what's going on.
 
-If you happen to encounter a brand new bug, congratulations! You are the chosen one! Now to write a bug report, please provide **as much detail as possible**. Explain the problem and include additional details to help maintainers reproduce the problem. Consider including these items:
+For a new bug, provide **enough detail to reproduce it**. Explain the problem and include additional details to help maintainers reproduce the problem. Consider including these items:
 
 1. **A clear and descriptive title** so the issue can be easily categorized and identified.
 2. **Provide specific steps to recreating your problem / cause the problem to happen**. This is so that the issue can be recrated by maintainers and tested against.
@@ -78,7 +74,8 @@ Here's the typical steps associated with development:
 4. Make sure you are following the appropriate [Style Guidelines](#style-guidelines) for each section of the code; and also our [General Coding Conventions](#general-coding-conventions)
 5. After verifying the code work, commit your work with a commit message
    - The `./commit` script is a helper script that runs formatting and checks before you commit. You can use it as `./commit -m "commit message"`. Or run it empty as `./commit` if you just want to run pre commit formats and checks. We recommend running this script before committing.
-   - **If this is the first time you are contributing to River Dash or any of it's components, PLEASE add your name and email to [contributors.md](./contributors.md) to show that you have read and agreed to this contribution guideline.**
+   - If this is your first contribution, follow the contributor acknowledgement
+instructions above.
 6. Finally, push to your forked repo or the development branch you have been given access to. Then open a pull request when you are ready to be merge into the mainline branches.
 
 ## Style Guidelines

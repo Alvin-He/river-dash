@@ -17,3 +17,58 @@
 	min-height: 0;
 	background: var(--color-canvas);
 }
+
+.auth-checking {
+	min-height: 100svh;
+	display: grid;
+	place-items: center;
+	background: var(--color-canvas);
+	color: var(--color-text-secondary);
+	font-size: 14px;
+}
+
+.auth-sign-out-error {
+	position: absolute;
+	z-index: 1000;
+	top: 64px;
+	right: 18px;
+	max-width: min(400px, 90vw);
+	padding: 10px 14px;
+	border: 1px solid var(--color-error);
+	border-radius: 6px;
+	background: var(--color-panel);
+	color: var(--color-error);
+	font-size: 12px;
+}
+
+/* Missing backend/auth routes are service errors, never mistaken for a login prompt. */
+.auth-unavailable {
+	min-height: 100svh;
+	display: grid;
+	place-items: center;
+	padding: 24px;
+	background: var(--color-canvas);
+	color: var(--color-text-primary);
+}
+.auth-unavailable-panel {
+	width: min(100%, 490px);
+	padding: 30px;
+	border: 1px solid var(--color-border);
+	border-radius: 8px;
+	background: var(--color-panel);
+}
+.auth-unavailable-panel h1 { margin: 12px 0; font-size: 24px; }
+.auth-unavailable-panel p { color: var(--color-text-secondary); font-size: 13px; line-height: 1.6; }
+.auth-unavailable-label { color: var(--color-caution) !important; font-size: 11px !important; letter-spacing: 0.08em; font-weight: 700; }
+.auth-unavailable-panel button {
+	margin-top: 14px;
+	padding: 11px 18px;
+	border: 0;
+	border-radius: 5px;
+	background: var(--color-accent);
+	color: var(--color-canvas);
+	font: inherit;
+	font-weight: 700;
+	cursor: pointer;
+}
+.auth-unavailable-panel button:focus-visible { outline: 2px solid var(--color-text-primary); outline-offset: 3px; }

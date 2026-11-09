@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_SURFACE, MIN_SURFACE_WIDTH, minWidthFor } from "../../layout/dashboardLayout";
 import { FloatingModule } from "../FloatingModule";
+import type { UIController } from "../../controller/UIController";
+import type { StandSimulator } from "../../controller/MockStand";
+import { ModeControlsModule } from "../../modules/mode-controls/ModeControlsModule";
+import { MockStandModule } from "../../modules/mock-stand/MockStandModule";
+import { OperatorEventsModule } from "../../modules/operator-events/OperatorEventsModule";
+import type { OperatorEventLog } from "../../controller/OperatorEventLog";
 import { useDashboardLayout } from "../../layout/useDashboardLayout";
 import { PlaceholderModule } from "../../modules/placeholder";
 import { demoTelemetryStream, TelemetryModule } from "../../modules/telemetry";
@@ -9,14 +15,18 @@ import styles from "./DashboardCanvas.module.css";
 
 interface DashboardCanvasProps {
 	isLocked: boolean;
+	readOnly: boolean;
 	resetSequence: number;
+	controller: UIController;
+	simulator: StandSimulator;
+	eventLog: OperatorEventLog;
 }
 
 /**
  * Registers visible dashboard modules and connects them to layout interactions.
  * Feature content lives in modules/, while geometry rules live in layout/.
  */
-export function DashboardCanvas({ isLocked, resetSequence }: DashboardCanvasProps) {
+export function DashboardCanvas({ isLocked, readOnly, resetSequence, controller, simulator, eventLog }: DashboardCanvasProps) {
 	const canvasRef = useRef<HTMLElement>(null);
 	const [viewport, setViewport] = useState(DEFAULT_SURFACE);
 	useEffect(() => {
@@ -69,10 +79,15 @@ export function DashboardCanvas({ isLocked, resetSequence }: DashboardCanvasProp
 					onResizeStart={beginResize("pressure")}
 					onResizeEnd={endResize}
 				>
-					<PlaceholderModule
-						title="Propellant pressures"
-						isAffected={affectedModuleIds.has("pressure")}
-					/>
+					{readOnly ? (
+						<PlaceholderModule
+							title="Stand simulator"
+							message="View-only access — simulator controls are unavailable"
+							isAffected={affectedModuleIds.has("pressure")}
+						/>
+					) : (
+						<MockStandModule controller={controller} simulator={simulator} isAffected={affectedModuleIds.has("pressure")} />
+					)}
 				</FloatingModule>
 
 				<FloatingModule
@@ -118,10 +133,15 @@ export function DashboardCanvas({ isLocked, resetSequence }: DashboardCanvasProp
 					onResizeStart={beginResize("controls")}
 					onResizeEnd={endResize}
 				>
-					<PlaceholderModule
-						title="Mode & Valve Control"
-						isAffected={affectedModuleIds.has("controls")}
-					/>
+					{readOnly ? (
+						<PlaceholderModule
+							title="Mode & valve control"
+							message="View-only access — simulated stand commands are unavailable"
+							isAffected={affectedModuleIds.has("controls")}
+						/>
+					) : (
+						<ModeControlsModule controller={controller} isAffected={affectedModuleIds.has("controls")} />
+					)}
 				</FloatingModule>
 
 				<FloatingModule
@@ -135,10 +155,7 @@ export function DashboardCanvas({ isLocked, resetSequence }: DashboardCanvasProp
 					onResizeStart={beginResize("events")}
 					onResizeEnd={endResize}
 				>
-					<PlaceholderModule
-						title="Operator event log"
-						isAffected={affectedModuleIds.has("events")}
-					/>
+					<OperatorEventsModule log={eventLog} isAffected={affectedModuleIds.has("events")} />
 				</FloatingModule>
 
 				<FloatingModule

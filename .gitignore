@@ -1,10 +1,30 @@
-# General Files
-*.lock
+# Installed packages and generated build artifacts
+node_modules/
+frontend/**/dist/
+frontend/**/dist-ssr/
+frontend/**/.viewer-dist/
+frontend/**/.lan-test-build/
+backend/target/
 
-# NODE/REACT/VITE/WEB
-node_modules
-package-lock.json
+# Local runtime state (may contain credentials or session information)
+frontend/**/.river-dash-state/
+backend/**/*.db
+*.db-journal
+*.db-shm
+*.db-wal
+.env
+.env.*
+!.env.example
 
-# RUST/CARGO/BACKEND
-backend/target
+# Local optional Cloudflare binaries; use the pinned download or provide a path
+/tools/cloudflared.exe
+/tools/cloudflared-windows-amd64.exe
+/tools/cloudflared
 
+# Python tooling and local editor artifacts
+__pycache__/
+*.pyc
+.DS_Store
+
+# Keep Cargo.lock and frontend/package-lock.json in version control so
+# developers get reproducible dependency versions.

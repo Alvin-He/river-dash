@@ -1,6 +1,10 @@
-import type { CSSProperties, ReactNode } from "react";
-import { Rnd } from "react-rnd";
+import type { ComponentType, CSSProperties, ReactNode } from "react";
+import { Rnd, type Props as RndProps } from "react-rnd";
 import "./FloatingModule.css";
+
+// react-rnd's class JSX type is incompatible with TS 6's React 19 JSX check.
+// The public Props type remains checked; this changes no runtime behavior.
+const ResizableDraggable = Rnd as unknown as ComponentType<RndProps>;
 
 /** Pixel geometry relative to the dashboard's module surface. */
 export interface ModulePosition {
@@ -86,7 +90,7 @@ export function FloatingModule({
 	onResizeEnd,
 }: FloatingModuleProps) {
 	return (
-		<Rnd
+		<ResizableDraggable
 			bounds="parent"
 			className="floating-module"
 			disableDragging={isLocked}
@@ -99,10 +103,10 @@ export function FloatingModule({
 			cancel="button, input, select, textarea, [data-no-drag]"
 			resizeHandleStyles={resizeHandleStyles}
 			// During drag, provide a preview only; commit the position on drag stop.
-			onDrag={(_event, data) =>
+			onDrag={(_event: unknown, data: { x: number; y: number }) =>
 				onDragPreview({ ...position, x: data.x, y: data.y })
 			}
-			onDragStop={(_event, data) => {
+			onDragStop={(_event: unknown, data: { x: number; y: number }) => {
 				onPositionChange({ ...position, x: data.x, y: data.y });
 				onDragEnd();
 			}}
@@ -133,6 +137,6 @@ export function FloatingModule({
 			}}
 		>
 			{children}
-		</Rnd>
+		</ResizableDraggable>
 	);
 }

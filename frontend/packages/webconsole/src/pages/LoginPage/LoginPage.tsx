@@ -1,24 +1,40 @@
 import { useState, type FormEvent } from "react";
-import { MOCK_CREDENTIALS, signInWithMockCredentials } from "../../auth/mockAuth";
+import type { Credentials } from "../../auth/authApi";
 import { BrandMark } from "../../components/BrandMark/BrandMark";
 import styles from "./LoginPage.module.css";
 
-export function LoginPage() {
+interface LoginPageProps {
+	onSignIn: (credentials: Credentials) => Promise<void>;
+	notice?: string;
+}
+
+export function LoginPage({ onSignIn, notice }: LoginPageProps) {
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
-	const [passwordVisible, setPasswordVisible] = useState(true);
+	const [passwordVisible, setPasswordVisible] = useState(false);
+	const [pending, setPending] = useState(false);
 	const [error, setError] = useState("");
 
-	function handleSubmit(event: FormEvent<HTMLFormElement>) {
+	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
+		if (pending) return;
 
-		if (signInWithMockCredentials(username, password)) {
-			window.location.assign("/dashboard");
+		if (!username.trim() || !password) {
+			setError("Enter both a username and password.");
 			return;
 		}
 
-		// Do not clear either input on an unsuccessful attempt.
-		setError("Incorrect username or password. Please try again.");
+		setError("");
+		setPending(true);
+		try {
+			await onSignIn({ username: username.trim(), password });
+			setPassword("");
+		} catch (error) {
+			// Preserve both inputs after an unsuccessful attempt.
+			setError(error instanceof Error ? error.message : "Sign in failed. Please try again.");
+		} finally {
+			setPending(false);
+		}
 	}
 
 	return (
@@ -28,16 +44,16 @@ export function LoginPage() {
 					<span className={styles.brandMark} aria-hidden="true"><BrandMark /></span>
 					<div className={styles.brandText}>
 						<strong>NILE CONSOLE</strong>
-						<span>RIVER DASH / OPERATOR INTERFACE</span>
+						<span>RIVER DASH / REMOTE VIEWER</span>
 					</div>
 				</div>
 
 				<section className={styles.card} aria-labelledby="login-title">
 					<div className={styles.cardHeading}>
-						<p className={styles.eyebrow}>CONSOLE ACCESS</p>
+						<p className={styles.eyebrow}>VIEW-ONLY ACCESS</p>
 						<h1 id="login-title">Sign in</h1>
 						<p className={styles.description}>
-							Enter your credentials to open the test stand dashboard.
+							Sign in with an account created by the local operator. This browser automatically joins as a view-only client; no viewer-mode setup is needed.
 						</p>
 					</div>
 
@@ -51,6 +67,8 @@ export function LoginPage() {
 								autoComplete="username"
 								placeholder="Enter username"
 								value={username}
+								minLength={1}
+								disabled={pending}
 								onChange={(event) => {
 									setUsername(event.target.value);
 									setError("");
@@ -71,17 +89,19 @@ export function LoginPage() {
 									autoComplete="current-password"
 									placeholder="Enter password"
 									value={password}
+									disabled={pending}
 									onChange={(event) => {
 										setPassword(event.target.value);
 										setError("");
 									}}
 									aria-invalid={Boolean(error)}
 									aria-describedby={error ? "login-error" : undefined}
-								required
+									required
 								/>
 								<button
 									type="button"
 									className={styles.passwordToggle}
+									disabled={pending}
 									onClick={() => setPasswordVisible((visible) => !visible)}
 									aria-label={passwordVisible ? "Hide password" : "Show password"}
 								>
@@ -90,33 +110,17 @@ export function LoginPage() {
 							</div>
 						</div>
 
-						{error && (
-							<p id="login-error" className={styles.error} role="alert">
-								{error}
-							</p>
-						)}
+						{notice && !error && <p className={styles.notice} role="status">{notice}</p>}
+						{error && <p id="login-error" className={styles.error} role="alert">{error}</p>}
 
-						<button className={styles.submit} type="submit">
-							Sign in <span aria-hidden="true">→</span>
+						<button className={styles.submit} type="submit" disabled={pending}>
+							{pending ? "Signing in…" : "Sign in"}
+							{!pending && <span aria-hidden="true">→</span>}
 						</button>
 					</form>
 				</section>
 
-				{import.meta.env.DEV && (
-					<div className={styles.devPanel}>
-						<div className={styles.devHeader}>
-							<span className={styles.devDot} aria-hidden="true" />
-							<strong>Development mode</strong>
-						</div>
-						<p>
-							Mock credentials: <code>{MOCK_CREDENTIALS.username}</code> /{" "}
-							<code>{MOCK_CREDENTIALS.password}</code>
-						</p>
-						<a href="/dashboard">Open dashboard without signing in →</a>
-					</div>
-				)}
-
-				<p className={styles.footer}>NILE Console · Mock authentication for development</p>
+				<p className={styles.footer}>NILE Console · Remote monitoring access</p>
 			</div>
 		</main>
 	);

@@ -1,31 +1,66 @@
 # River Dash webconsole
 
-React, TypeScript, Vite, and `react-rnd` frontend for the NILE test-stand dashboard.
+React, TypeScript, Vite, and `react-rnd` frontend for the NILE test-stand
+engineering dashboard.
 
-## Run locally
+## Start one frontend for operator and viewers
 
-From `frontend/`, install dependencies with `npm install`, then use the `webconsole` workspace:
+Start the Rust backend on port `3000`. Then run from `frontend/`:
 
 ```sh
-npm run dev --workspace=webconsole
-npm run build --workspace=webconsole
-npm run lint --workspace=webconsole
+npm install
+npm run dev --workspace=@river-dash/webconsole
 ```
 
-During development, `/login` provides a mock sign-in and `/dashboard` shows the console. The mock authentication behavior and its security limitations are documented in [AUTH_DEVELOPMENT.md](./AUTH_DEVELOPMENT.md).
+- On the host computer, open `http://127.0.0.1:5173` to use the **operator**
+  dashboard. Click **Create viewer** to create login credentials in the backend.
+- On another device on the LAN, open `http://<host-LAN-IP>:5173`. This
+  automatically shows the **viewer** sign-in screen without a separate
+  viewer-mode startup command.
+- A built frontend can be served the same way with
+  `npm run build --workspace=@river-dash/webconsole` followed by
+  `npm run preview --workspace=@river-dash/webconsole` (port `4173`).
 
-## Dashboard modules and layout
+The normal dev and preview servers can accept LAN connections and proxy API
+requests to `127.0.0.1:3000`. The frontend gateway allows viewer sign-in and
+read-only configuration requests while rejecting viewer writes. **Keep port 3000 private**:
+the backend itself still exposes configuration write routes. See
+[authentication and deployment](AUTH_DEVELOPMENT.md) for details and caveats.
 
-`src/components/DashboardCanvas/DashboardCanvas.tsx` registers visible modules. Layout geometry, snapping, and resize constraints are implemented in `src/layout/dashboardLayout.ts` and orchestrated by `src/layout/useDashboardLayout.ts`.
+## Optional temporary public link
 
-- [Module authoring](./src/modules/README.md)
-- [Shared component contracts](./src/components/README.md)
-- [Layout behavior and registration](./src/layout/README.md)
-- [Repository-wide module developer guide](../../../MODULE_DEVELOPER_GUIDE.md)
+The local operator can enable a managed Cloudflare Quick Tunnel in **Viewer
+management**. It starts a separate viewer-only preview on loopback port `4174`
+and shows a temporary HTTPS link. This feature is disabled by default and does
+not affect local operation if Cloudflare is unavailable. See
+[Quick Tunnel setup](CLOUDFLARE_TUNNEL.md).
 
-The dashboard fills its browser window. Its default geometry uses a 1920 × 1080 reference; smaller windows adapt panel sizes and reflow when minimum panel dimensions require it.
-The header currently displays a hard-coded connection/rate label; it does not indicate verified live connectivity or a measured telemetry frequency.
+## Development checks
 
-## Fullscreen
+```sh
+npm run build --workspace=@river-dash/webconsole
+npm run lint --workspace=@river-dash/webconsole
+```
 
-On `/dashboard`, the header's **Full screen** button requests fullscreen for the dashboard. **Exit full screen** or **Esc** returns to the windowed view. The button is disabled if the browser does not expose the Fullscreen API, and the interface displays an error if the request fails. Fullscreen changes viewport sizing but does not reset the committed module layout.
+## Current dashboard
+
+`src/components/DashboardCanvas/DashboardCanvas.tsx` registers the visible
+modules. Geometry, snapping, and resize constraints live in
+`src/layout/dashboardLayout.ts`; `src/layout/useDashboardLayout.ts` manages
+interactions and persistence.
+
+- [Adding modules](src/modules/README.md)
+- [Shared component contracts](src/components/README.md)
+- [Layout behavior](src/layout/README.md)
+
+The dashboard fills the browser viewport and adapts module positions and sizes
+to narrower windows. Telemetry and graphs use demonstration streams. The
+operator has mock mode/valve controls, a stand simulator, and an in-memory event
+log; the P&ID module is a placeholder. The header identifies demo data. Viewer
+browsers do not share the operator's simulated state.
+
+### Fullscreen
+
+On `/dashboard`, the header's **Full screen** action requests fullscreen mode.
+Use **Exit full screen** or **Esc** to return to the windowed view. Fullscreen
+changes the available viewport but does not reset the saved layout.

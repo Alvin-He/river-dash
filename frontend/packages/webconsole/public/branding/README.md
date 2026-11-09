@@ -1,17 +1,13 @@
-# River Dash brand SVG placeholder
+# Branding assets
 
-To add the real logo:
+The webconsole uses the SVG selected by `BRAND_MARK_SRC` in
+[`src/config/branding.ts`](../../src/config/branding.ts).
 
-1. Replace `frontend/packages/webconsole/public/branding/brand-mark.svg` with your SVG file, keeping that filename.
-2. Refresh the login page or dashboard. Both use the same asset. No code change is needed.
+The current asset is
+`public/branding/Single-Tone Logo (SPT Orange).svg`. To change the logo,
+add or replace an SVG in this folder and update `BRAND_MARK_SRC` to its public
+URL (for example, `/branding/your-logo.svg`). The header and sign-in page
+use the same configured asset.
 
-If you prefer a different SVG filename, update `BRAND_MARK_SRC` in
-`frontend/packages/webconsole/src/config/branding.ts` to `/branding/your-filename.svg`.
-
-The header reserves an 18 x 18 px logo area (`ConsoleHeader.module.css`) and
-login reserves a 39 x 39 px area (`LoginPage.module.css`). The image uses
-`object-fit: contain` so it retains its aspect ratio. CSS adds no background
-or orange square around the logo. If your own SVG includes a background, that
-will still be visible.
-
-The browser-tab favicon (`public/favicon.svg`) is unchanged by this update.
+SVG images retain their aspect ratio through `object-fit: contain`. The
+browser-tab favicon is configured separately in `public/favicon.svg`.

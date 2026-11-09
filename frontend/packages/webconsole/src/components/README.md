@@ -53,6 +53,5 @@ remain unlit.
 Interactive controls in the header (buttons/inputs) are excluded from drag;
 use `[data-no-drag]` for other areas that must not begin dragging.
 
-See `../layout/README.md` for the geometry lifecycle and
-[`MODULE_DEVELOPER_GUIDE.md`](../../../../../MODULE_DEVELOPER_GUIDE.md) for
-an end-to-end registration example.
+See [`../layout/README.md`](../layout/README.md) for geometry and
+[`../modules/README.md`](../modules/README.md) for module registration.

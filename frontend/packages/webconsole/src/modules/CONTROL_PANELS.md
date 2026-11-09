@@ -1,17 +1,35 @@
-# Operator controls and event history
+# Mock stand controls and event history
 
-These modules follow the current River Dash dark, modular dashboard styling. The early Figma design guides the hierarchy (mode selector, valve buttons, event messages); the later engineering feedback takes precedence where it changes operational meaning.
+The operator dashboard includes a **Mode & Valve Control** module and an
+**Operator event log**. Both use the browser-local stand simulator; neither
+communicates with NILE hardware. Viewer sessions do not have access to the
+simulated control buttons.
 
-## Mode & valve control
+## Mode and valve controls
 
-The top section shows the **stand-reported mode**, not the most recently requested mode. The operator chooses a desired non-SAFE mode and clicks **Request**; **Request SAFE** stays separately accessible. SAFE is not defined as "close every valve". The frontend must not represent either a submitted request or an accepted response as proof of physical actuation.
+The control module displays simulated stand-reported modes and valve states.
+Available requests depend on the reported mode. Request acknowledgment does
+not confirm that a valve moved or that a mode transition completed.
 
-The valve table is placed immediately below the compact mode section to remain discoverable in a small draggable/resizable module. Each row shows the **reported** valve state and Open / Close **requests**. Disabled controls indicate unavailable actions rather than alarms. Unknown reports are displayed as UNKNOWN. The current valve inventory and permissions are *illustrative mock data*; real stand IDs, command permissions, and backend safety interlocks must be specified before connecting hardware.
+The simulated Fire action validates its timing inputs and records a request,
+but does not execute a firing sequence or send a hardware command. SAFE mode
+must not be described as closing every valve.
 
-## Operator event log
+See [the controller documentation](../controller/README.md) for the mock
+request/response behavior and operating-mode rules.
 
-The log displays session-local REQUEST, RESPONSE, REPORT, and SYSTEM messages. Filtering and searching are available without exporting. The temporary CSV button was removed from the operator panel because it implied a logging/export workflow that isn't part of the operator's immediate task. Persistent storage, complete command/telemetry logging, and export or replay should be provided by a dedicated backend logging workflow, as required by the project specification.
+## Operator event history
 
-## Integration notes
+The event module displays requests, responses, simulated stand reports, and
+system messages. It supports filtering and searching, but its records exist
+only for the current browser session. Persistent logging and replay require a
+backend data source.
 
-The modules subscribe through `UIController` and `OperatorEventLog`; they never call each other. The mock stand simulator can publish independent mode and valve reports and simulated responses. The UI is simulation-only. The modules were deliberately kept compatible with the existing `ModuleFrame`, movable windows, and current layout dimensions. Automated tests remain out of scope for this iteration as requested.
+## Hardware integration
+
+A future hardware-connected implementation must validate commands and enforce
+operating-mode restrictions at the stand/backend boundary. Disabling buttons
+in the frontend does not provide authorization or operational safeguards.
+
+The modules are registered in
+[`DashboardCanvas.tsx`](../components/DashboardCanvas/DashboardCanvas.tsx).

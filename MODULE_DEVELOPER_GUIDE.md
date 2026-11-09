@@ -146,7 +146,13 @@ For action controls inside a header, use standard interactive elements (already 
 
 ## 6. What `PlaceholderModule` is for
 
-`src/modules/placeholder/PlaceholderModule.tsx` is **temporary UI content** for modules that have not been implemented (currently used for pressure, P&ID, controls, and events in `DashboardCanvas`). It happens to show the bare minimum `ModuleFrame` usage and affected-glow forwarding, but it is **not intended to be the complete integration example**. Use `TelemetryModule` for scrollable data content and `TimeSeriesGraphModule` for a resize-sensitive visual component.
+`src/modules/placeholder/PlaceholderModule.tsx` is **temporary UI content**.
+The P&ID panel still uses it; viewer mode also uses it to replace the
+operator-only stand simulator and mode/valve controls. Operator mode renders
+`MockStandModule`, `ModeControlsModule`, and `OperatorEventsModule` instead of
+placeholders. The placeholder demonstrates minimal `ModuleFrame` integration,
+but it is **not a complete feature example**. Use `TelemetryModule` for
+scrollable data and `TimeSeriesGraphModule` for resize-sensitive visuals.
 
 ## 7. What is a "nice interval"?
 

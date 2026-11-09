@@ -11,9 +11,11 @@ implementing drag/resize behavior or duplicating the standard visual shell.
   Its temporary data source is in `telemetry/demoTelemetryStream.ts`.
 - `time-series-graph/TimeSeriesGraphModule.tsx` — graph module with a
   container-responsive plot and a demo stream adapter.
-- `placeholder/PlaceholderModule.tsx` — **temporary content**, used where a
-  real feature is not implemented yet. It is a minimal `ModuleFrame` example,
-  not the recommended full-feature implementation guide.
+- `mock-stand/`, `mode-controls/`, and `operator-events/` — local mock stand,
+  simulated command controls, and an in-memory event log for the operator.
+- `placeholder/PlaceholderModule.tsx` — temporary content for the P&ID panel
+  and read-only substitutes for operator-only controls. It is a minimal
+  `ModuleFrame` example, not the full-feature implementation guide.
 
 ## Adding a module
 
@@ -50,6 +52,6 @@ geometry constraints. Set geometry limits in `dashboardLayout.ts` and keep
 `FloatingModule` minimums consistent. There is no feature-level maximum-size
 or dynamic-resize API at present.
 
-For exact file paths, a full JSX registration example, API details, styling
-ownership, and saved-layout caveats, see the repository's
-[`MODULE_DEVELOPER_GUIDE.md`](../../../../../MODULE_DEVELOPER_GUIDE.md).
+See [layout geometry](../layout/README.md) and
+[shared components](../components/README.md) for registration details,
+minimum-size handling, and styling ownership.

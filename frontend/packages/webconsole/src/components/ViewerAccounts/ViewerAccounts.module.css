@@ -1,0 +1,69 @@
+.scrim {
+	position: fixed;
+	inset: 0;
+	z-index: 2000;
+	display: grid;
+	place-items: center;
+	padding: 16px;
+	background: rgb(0 0 0 / 65%);
+}
+.panel {
+	width: min(100%, 540px);
+	max-height: calc(100dvh - 32px);
+	overflow-y: auto;
+	padding: 28px;
+	border: 1px solid var(--color-border);
+	border-radius: 9px;
+	background: var(--color-panel);
+	color: var(--color-text-primary);
+	box-shadow: 0 16px 70px rgb(0 0 0 / 35%);
+}
+.heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; text-align: left; }
+.heading h2 { font-size: 19px; margin: 5px 0 0; }
+.eyebrow { font-size: 10px; color: var(--color-accent); letter-spacing: 0.09em; font-weight: 700; }
+.close {
+	padding: 9px 11px;
+	border: 1px solid var(--color-border);
+	border-radius: 4px;
+	background: var(--color-raised);
+	color: var(--color-text-primary);
+	cursor: pointer;
+}
+.form { display: flex; flex-direction: column; gap: 10px; }
+.form label { font-size: 12px; font-weight: 600; }
+.form input {
+	min-height: 40px;
+	padding: 8px 11px;
+	border: 1px solid var(--color-border);
+	border-radius: 4px;
+	background: var(--color-canvas);
+	color: var(--color-text-primary);
+	font: inherit;
+}
+.submit { margin-top: 8px; min-height: 42px; border: none; border-radius: 4px; background: var(--color-accent); font-weight: 700; cursor: pointer; }
+.error { font-size: 12px; color: var(--color-error); }
+.success { font-size: 12px; color: var(--color-success); }
+.panel button:focus-visible, .form input:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.panel button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.remote { border: 1px solid var(--color-border); border-radius: 6px; padding: 14px; margin: 18px 0 22px; }
+.remoteHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.remoteHeading h3, .accountTitle { font-size: 14px; margin: 0 0 5px; }
+.remoteToggle, .copyLink {
+  border: 1px solid var(--color-border); background: var(--color-raised);
+  color: var(--color-text-primary); border-radius: 4px; padding: 9px 12px;
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.remoteToggle[aria-pressed="true"] { border-color: var(--color-accent); }
+.remoteStatus { margin: 14px 0 7px; font-size: 12px; font-weight: 600; }
+.remoteNote { margin: 8px 0 0; color: var(--color-text-secondary); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.remoteShare { display: grid; gap: 8px; margin: 12px 0; }
+.remoteShare label { font-size: 11px; font-weight: 600; }
+.remoteShareRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.remoteShare input {
+  width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--color-border);
+  border-radius: 4px; background: var(--color-canvas); color: var(--color-text-primary);
+  font: inherit; font-size: 12px;
+}
+.copyLink { border-color: var(--color-accent); white-space: nowrap; }
+.accountTitle { margin: 0 0 12px; }

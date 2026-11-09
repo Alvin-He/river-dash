@@ -1,15 +1,18 @@
 {
-  "name": "webconsole",
+  "name": "@river-dash/webconsole",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b tsconfig.build.json tsconfig.node.json && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:tunnel": "vite preview --mode tunnel-viewer --host 127.0.0.1 --port 4174",
+    "test:lan-access": "tsc -p tsconfig.gateway-test.json && node --test .lan-test-build/lanAccess.test.js .lan-test-build/quickTunnel.test.js"
   },
   "dependencies": {
+    "@river-dash/global-data-source": "^1.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-rnd": "^10.5.2"
