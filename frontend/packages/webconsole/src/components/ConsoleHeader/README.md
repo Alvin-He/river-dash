@@ -39,3 +39,19 @@ Do not restore the old `LIVE · 24.8 Hz` string: it was hardcoded in the UI
 branch and does not represent verified telemetry. Likewise, `Shift+M` must not
 interfere with operator text inputs, and presentation-level role checks do
 not replace server-side authorization.
+
+## Saved layouts
+
+The **Saved layouts** group appears when optional `onSaveConfiguration` and
+`onLoadConfiguration` callbacks are supplied for a non-viewer session. An
+operator can enter a name, save the currently committed geometry, load a named
+configuration (only when unlocked), download JSON, import JSON, or delete a
+preset. The menu itself does not access browser storage, import geometry, or
+assume an authentication scheme: `App.tsx` supplies those operations via
+`layoutConfigurations.ts` and `DashboardCanvas`'s imperative layout handle.
+
+`layoutConfigurations` and `layoutMessage` display saved items and feedback;
+`onDeleteConfiguration`, `onExportConfiguration`, and `onImportConfiguration`
+are optional. Viewers do not see these controls. Client-side hiding is a UI
+measure only; a future auth-enabled implementation must separately enforce
+appropriate authorization and scope stored layouts to accounts if required.

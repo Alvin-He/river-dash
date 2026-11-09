@@ -8,3 +8,5 @@ package-lock.json
 # RUST/CARGO/BACKEND
 backend/target
 
+# River Dash local application state
+.river-dash-state/

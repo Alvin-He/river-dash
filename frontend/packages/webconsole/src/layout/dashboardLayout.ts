@@ -25,9 +25,65 @@ const defaults: DashboardLayout = {
   graphs: { x: 1088, y: 0, width: 560, height: 420 },
 };
 
+/** Four control/placeholder panels are fixed; graph and telemetry panels are repeatable. */
 export const moduleIds = Object.keys(defaults);
-export function minHeightFor(id: string): number { return MIN_HEIGHT_BY_MODULE[id] ?? MIN_HEIGHT; }
-export function minWidthFor(id: string): number { return MIN_WIDTH_BY_MODULE[id] ?? MIN_WIDTH; }
+export const FIXED_MODULE_IDS = ["pressure", "pid", "controls", "events"] as const;
+export type RepeatableModuleKind = "graphs" | "telemetry";
+export const MAX_MODULES_PER_KIND = 8;
+export function repeatableModuleKind(id: string): RepeatableModuleKind | null {
+  if (/^graphs(?:-[1-9][0-9]{0,2})?$/.test(id)) return "graphs";
+  if (/^telemetry(?:-[1-9][0-9]{0,2})?$/.test(id)) return "telemetry";
+  return null;
+}
+export function repeatableModuleLabel(id: string): string {
+  const kind = repeatableModuleKind(id);
+  if (!kind) return id;
+  const suffix = id.slice(kind.length);
+  const number = suffix ? Number(suffix.slice(1)) + 1 : 1;
+  return `${kind === "graphs" ? "Time series graph" : "Telemetry overview"} ${number}`;
+}
+export function listRepeatableModules(layout: DashboardLayout): { id: string; kind: RepeatableModuleKind; label: string }[] {
+  return Object.keys(layout).flatMap((id) => {
+    const kind = repeatableModuleKind(id);
+    return kind ? [{ id, kind, label: repeatableModuleLabel(id) }] : [];
+  });
+}
+
+/** Place new modules in the first non-overlapping opening; extend the scroll area when full. */
+export function addRepeatableModule(layout: DashboardLayout, kind: RepeatableModuleKind, width: number): { layout: DashboardLayout; id: string } {
+  const count = Object.keys(layout).filter(id => repeatableModuleKind(id) === kind).length;
+  if (count >= MAX_MODULES_PER_KIND) throw new Error(`You can have at most ${MAX_MODULES_PER_KIND} ${kind === "graphs" ? "graphs" : "telemetry panels"}.`);
+  let id: string = kind;
+  for (let number = 1; Object.hasOwn(layout, id); number++) id = `${kind}-${number}`;
+  const availableWidth = Math.max(MIN_SURFACE_WIDTH, Math.floor(width));
+  const size = kind === "graphs" ? { width: 560, height: 420 } : { width: 350, height: 340 };
+  size.width = Math.min(size.width, availableWidth);
+  const entries = Object.values(layout);
+  const xs = [...new Set([0, ...entries.flatMap(p => [p.x, p.x + p.width + MODULE_GAP])])].sort((a, b) => a - b);
+  const ys = [...new Set([0, ...entries.flatMap(p => [p.y, p.y + p.height + MODULE_GAP])])].sort((a, b) => a - b);
+  let candidate: ModulePosition | undefined;
+  for (const y of ys) {
+    for (const x of xs) {
+      const proposed = { x, y, ...size };
+      if (x + size.width > availableWidth || entries.some(p => overlapsWithGap(proposed, p))) continue;
+      candidate = proposed;
+      break;
+    }
+    if (candidate) break;
+  }
+  // The canvas scrolls vertically and therefore doesn't need a fixed bottom bound.
+  candidate ??= { x: 0, y: Math.max(0, ...entries.map(p => p.y + p.height + MODULE_GAP)), ...size };
+  return { id, layout: { ...layout, [id]: candidate } };
+}
+
+export function removeRepeatableModule(layout: DashboardLayout, id: string): DashboardLayout {
+  if (!repeatableModuleKind(id) || !Object.hasOwn(layout, id)) throw new Error("Only existing graph and telemetry panels may be removed.");
+  const next = { ...layout };
+  delete next[id];
+  return next;
+}
+export function minHeightFor(id: string): number { return MIN_HEIGHT_BY_MODULE[repeatableModuleKind(id) ?? id] ?? MIN_HEIGHT; }
+export function minWidthFor(id: string): number { return MIN_WIDTH_BY_MODULE[repeatableModuleKind(id) ?? id] ?? MIN_WIDTH; }
 const copy = (layout: DashboardLayout): DashboardLayout =>
   Object.fromEntries(Object.entries(layout).map(([id, geometry]) => [id, { ...geometry }]));
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), Math.max(min, max));
@@ -276,7 +332,7 @@ export function findMoveAffectedModules(id: string, requested: ModulePosition, c
 /** Keep the desktop arrangement as windows shrink; only reflow if minima prevent it. */
 export function fitLayoutToWidth(layout: DashboardLayout, width: number, savedWidth = DEFAULT_SURFACE.width): DashboardLayout {
   const safeWidth = Math.max(MIN_SURFACE_WIDTH, Math.floor(width));
-  const ordered = moduleIds.map(id => [id, layout[id] ?? defaults[id]] as const);
+  const ordered = Object.entries(layout);
   const candidate = Object.fromEntries(ordered.map(([id, p]) => [id, { ...p }])) as DashboardLayout;
   const tallest = Math.max(DEFAULT_SURFACE.height, ...ordered.map(([, p]) => p.y + p.height + MODULE_GAP));
   const referenceWidth = Math.max(savedWidth, ...ordered.map(([, p]) => p.x + p.width));
@@ -298,14 +354,14 @@ export function fitLayoutToWidth(layout: DashboardLayout, width: number, savedWi
   for (const [id, original] of visualOrder) {
     const p = { ...scaled[id] };
     for (const [otherId, other] of Object.entries(fitted)) {
-      if (original.x === (layout[otherId] ?? defaults[otherId]).x) p.x = other.x;
-      if (original.y === (layout[otherId] ?? defaults[otherId]).y) p.y = other.y;
+      if (original.x === layout[otherId].x) p.x = other.x;
+      if (original.y === layout[otherId].y) p.y = other.y;
     }
-    for (let attempts = 0; attempts < moduleIds.length; attempts++) {
+    for (let attempts = 0; attempts < ordered.length; attempts++) {
       const conflict = Object.entries(fitted).find(([, other]) => overlapsWithGap(p, other));
       if (!conflict) break;
       const [otherId, other] = conflict;
-      const before = layout[otherId] ?? defaults[otherId];
+      const before = layout[otherId];
       const rightOf = original.x >= before.x + before.width + MODULE_GAP;
       const below = original.y >= before.y + before.height + MODULE_GAP;
       const dx = other.x + other.width + MODULE_GAP - p.x;
@@ -344,7 +400,12 @@ export function parseSavedLayout(raw: unknown): DashboardLayout | null {
   const value = raw as { version?: number; layout?: Record<string, ModulePosition> };
   if (value.version !== 1 || !value.layout || typeof value.layout !== "object") return null;
   const next: DashboardLayout = {};
-  for (const id of moduleIds) {
+  const ids = Object.keys(value.layout);
+  if (ids.length > FIXED_MODULE_IDS.length + MAX_MODULES_PER_KIND * 2 ||
+    FIXED_MODULE_IDS.some(id => !Object.hasOwn(value.layout!, id)) ||
+    ids.some(id => !FIXED_MODULE_IDS.includes(id as (typeof FIXED_MODULE_IDS)[number]) && !repeatableModuleKind(id)) ||
+    (["graphs", "telemetry"] as const).some(kind => ids.filter(id => repeatableModuleKind(id) === kind).length > MAX_MODULES_PER_KIND)) return null;
+  for (const id of ids) {
     const p = value.layout[id];
     if (!p || ![p.x, p.y, p.width, p.height].every(Number.isFinite) || p.width < minWidthFor(id) || p.height < minHeightFor(id) || p.x < 0 || p.y < 0) return null;
     next[id] = { x: p.x, y: p.y, width: p.width, height: p.height };

@@ -7,22 +7,33 @@ implementing drag/resize behavior or duplicating the standard visual shell.
 ## Current modules
 
 - `telemetry/TelemetryModule.tsx` — raw telemetry display with an internal
-  scrollable table and a replaceable `TelemetryStream` subscription adapter.
-  Its temporary data source is in `telemetry/demoTelemetryStream.ts`.
-- `time-series-graph/TimeSeriesGraphModule.tsx` — graph module with a
-  container-responsive plot and a demo stream adapter.
+  scrollable table, a **Channels** popover (per-channel show/hide, Show all,
+  Hide all), browser-local persistence, and a replaceable `TelemetryStream`
+  subscription adapter. Selections also travel with newly saved named layouts.
+  Its temporary data source is in `telemetry/demoTelemetryStream.ts`. See
+  [Telemetry controls](../../../../../TELEMETRY_CHANNELS.md) for details.
+- `time-series-graph/TimeSeriesGraphModule.tsx` — container-responsive graph
+  with manual X/Y ranges, vertical wheel/drag panning, zoom, measurement
+  selection, per-trace colors/styles, and saved-view persistence. See
+  [Graph controls](../../../../../GRAPH_CONTROLS.md) for operator behavior and
+  warnings about the demo stream and mixed units.
 - `placeholder/PlaceholderModule.tsx` — **temporary content**, used where a
   real feature is not implemented yet. It is a minimal `ModuleFrame` example,
   not the recommended full-feature implementation guide.
 
-## Adding a module
+Graph and telemetry modules may now be added repeatedly from the floating
+menu. Each instance has a stable ID and its own saved channel/axis settings,
+and both types can be removed without touching fixed operational panels.
+Module counts and membership are preserved in the active and named layouts.
+
+## Adding a new fixed module type
 
 1. Create a feature folder (`valve-control/`) with a React component, an optional
    `*.module.css`, and an optional `index.ts` export.
 2. Render the content inside `ModuleFrame`, supplying a `title`. The module
    itself does **not** create a `FloatingModule` or implement drag/resize logic.
 3. In `../layout/dashboardLayout.ts`, add a unique ID and initial `{ x, y,
-   width, height }` entry in `defaults`. `moduleIds` is generated from that
+width, height }` entry in `defaults`. `moduleIds` is generated from that
    object automatically. Add an entry in `MIN_WIDTH_BY_MODULE` and/or
    `MIN_HEIGHT_BY_MODULE` only if the defaults (260 × 150 px) are insufficient.
 4. In `../components/DashboardCanvas/DashboardCanvas.tsx`, import and wrap the

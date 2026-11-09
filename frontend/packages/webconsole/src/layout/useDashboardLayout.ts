@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import type { ModulePosition } from "../components/FloatingModule";
+import { parseLayoutSnapshot, type LayoutSnapshot } from "./layoutConfigurations";
 import {
+  addRepeatableModule, removeRepeatableModule, type RepeatableModuleKind,
   createInitialLayout, DEFAULT_SURFACE, findChangedNeighborIds, findMoveAffectedModules,
   fitLayoutToWidth, MIN_SURFACE_WIDTH, parseSavedLayout, resizeWithNeighbors,
   resolveModulePosition, requiredSurfaceHeight,
@@ -90,6 +92,41 @@ export function useDashboardLayout(viewport: SurfaceBounds) {
     setResizeStart(null);
     persistLayout(next, viewport.width);
   };
+  /** Capture the committed (potentially wider) arrangement, not responsive packing. */
+  const getLayoutSnapshot = (): LayoutSnapshot => ({
+    version: 1,
+    referenceWidth: saved.referenceWidth,
+    layout: Object.fromEntries(Object.entries(committed).map(([id, p]) => [id, { ...p }])),
+  });
+  const applyLayoutSnapshot = (input: LayoutSnapshot) => {
+    const snapshot = parseLayoutSnapshot(input);
+    if (!snapshot) throw new Error("Cannot load an invalid layout configuration.");
+    setSaved({ layout: snapshot.layout, referenceWidth: snapshot.referenceWidth });
+    setLiveResize(null);
+    liveResizeRef.current = null;
+    resizeStartRef.current = null;
+    setResizeStart(null);
+    setDragPreview(null);
+    persistLayout(snapshot.layout, snapshot.referenceWidth);
+  };
+  const addModule = (kind: RepeatableModuleKind): string => {
+    // Use visible geometry on narrow screens so adding never creates hidden panels.
+    const result = addRepeatableModule(positions, kind, viewport.width);
+    setSaved({ layout: result.layout, referenceWidth: viewport.width });
+    setDragPreview(null);
+    setLiveResize(null);
+    liveResizeRef.current = null;
+    persistLayout(result.layout, viewport.width);
+    return result.id;
+  };
+  const removeModule = (id: string) => {
+    const next = removeRepeatableModule(committed, id);
+    setSaved({ layout: next, referenceWidth: saved.referenceWidth });
+    setLiveResize(null);
+    liveResizeRef.current = null;
+    setDragPreview(null);
+    persistLayout(next, saved.referenceWidth);
+  };
   const resetLayout = () => {
     const defaults = createInitialLayout();
     setSaved({ layout: defaults, referenceWidth: DEFAULT_SURFACE.width });
@@ -104,5 +141,6 @@ export function useDashboardLayout(viewport: SurfaceBounds) {
   return {
     positions, bounds, affectedModuleIds, updatePosition, updateResize,
     previewMove, clearDragPreview, beginResize, endResize, resetLayout,
+    getLayoutSnapshot, applyLayoutSnapshot, addModule, removeModule,
   };
 }
