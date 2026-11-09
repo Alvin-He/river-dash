@@ -6,6 +6,8 @@
 	height: 100dvh;
 	display: flex;
 	flex-direction: column;
+	position: relative;
+	isolation: isolate;
 	overflow: hidden;
 	background: var(--color-canvas);
 }

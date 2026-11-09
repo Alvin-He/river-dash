@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { canOpenDashboard, signOutOfMockSession } from "./auth/mockAuth";
-import { ConsoleHeader } from "./components/ConsoleHeader/ConsoleHeader";
+import { ConsoleMenu } from "./components/ConsoleHeader/ConsoleMenu";
 import { DashboardCanvas } from "./components/DashboardCanvas/DashboardCanvas";
 import { LoginPage } from "./pages/LoginPage/LoginPage";
 import "./App.css";
@@ -52,7 +52,7 @@ function DashboardPage() {
 
 	return (
 		<main ref={consoleRef} className="console">
-			<ConsoleHeader
+			<ConsoleMenu
 				isLocked={isLocked}
 				isFullscreen={isFullscreen}
 				fullscreenSupported={fullscreenSupported}

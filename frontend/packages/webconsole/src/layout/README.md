@@ -3,7 +3,7 @@
 All geometry is in CSS pixels relative to the scrollable module surface.
 `DashboardCanvas` measures the actual viewport width using `ResizeObserver`.
 `DEFAULT_SURFACE` (1888 × 999) represents the content area of a default
-**1920 × 1080 (16:9)** dashboard after its 48px header and 16px padding.
+**1920 × 1080 (16:9)** dashboard with no top bar and 16px canvas padding.
 It is a geometry reference, not a fixed browser aspect ratio: the dashboard
 always fills the available window. Smaller windows proportionally resize the
 module rectangles while preserving their relative arrangement, restoring gaps

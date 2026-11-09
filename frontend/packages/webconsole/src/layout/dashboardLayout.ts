@@ -5,8 +5,8 @@ export const MODULE_GAP = 16;
 export const MIN_WIDTH = 260;
 export const MIN_SURFACE_WIDTH = 420;
 const MIN_WIDTH_BY_MODULE: Record<string, number> = { telemetry: 300, controls: 300, pid: 300, graphs: 300, pressure: 300, events: 300 };
-/** Content region of a 1920 x 1080 (16:9) dashboard, after the 48px header and 16px padding. */
-export const DEFAULT_SURFACE = { width: 1888, height: 999 };
+/** Content region of a 1920 x 1080 (16:9) dashboard, after 16px canvas padding on each side. */
+export const DEFAULT_SURFACE = { width: 1888, height: 1048 };
 const MIN_HEIGHT = 150;
 const MIN_HEIGHT_BY_MODULE: Record<string, number> = { telemetry: 190, graphs: 280 };
 const SNAP_DISTANCE = 32;

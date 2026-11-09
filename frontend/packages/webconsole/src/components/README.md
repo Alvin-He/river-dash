@@ -5,7 +5,7 @@ feature modules in `../modules/` supply domain content and its internal styling.
 
 ## Responsibilities
 
-- `ConsoleHeader` — dashboard-level lock, reset, and sign-out controls.
+- `ConsoleMenu` — floating, keyboard-accessible dashboard menu. It replaces the top bar and provides layout/fullscreen/account controls and independent menu-button visibility/interactivity toggles.
 - `DashboardCanvas` — viewport measurement, registration of visible panels,
   layout-hook wiring, and scrollable canvas. It does not implement geometry math.
 - `FloatingModule` — `react-rnd` positioning and all eight resize handles;
