@@ -95,3 +95,10 @@ browser-only `stand/fire/request/mock` topic.
 Any future hardware integration requires a reviewed, separate backend adapter
 and stand-side authorization. Never forward these mock topics directly to a
 live stand or equate a simulated acknowledgment with `CommandResponseKind::Success`.
+
+## Automated tests
+
+The controller's Vitest unit/system tests, separate Playwright browser/UI tests,
+commands, and the documented TDD regression are described in the repository's
+[`TESTING.md`](../../../../../TESTING.md). All tests use a local simulator;
+none sends hardware commands.

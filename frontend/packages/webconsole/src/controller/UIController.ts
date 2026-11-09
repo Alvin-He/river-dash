@@ -174,14 +174,16 @@ export class TopicUIController implements UIController {
 	}
 
 	getValveStates(): ValveStates | null {
-		return this.reader.read(TOPICS.valveStates) ?? null;
+		const states = this.reader.read(TOPICS.valveStates);
+		// UI consumers must not mutate the shared stand-report snapshot.
+		return states ? { ...states } : null;
 	}
 
 	subscribeToValves(
 		callback: (states: ValveStates | null) => void,
 	): Unsubscribe {
 		return this.reader.subscribe(TOPICS.valveStates, (states) =>
-			callback(states ?? null),
+			callback(states ? { ...states } : null),
 		);
 	}
 
