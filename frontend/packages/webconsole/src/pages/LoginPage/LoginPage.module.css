@@ -21,15 +21,10 @@
 }
 
 .brandMark {
-	width: 39px;
-	height: 39px;
-	display: grid;
-	place-items: center;
-	border-radius: 6px;
-	background: var(--color-accent);
-	color: var(--color-canvas);
-	font-weight: 800;
-	font-size: 23px;
+	display: block;
+	width: 50px;
+	height: 50px;
+	flex-shrink: 0;
 }
 
 .brandText {

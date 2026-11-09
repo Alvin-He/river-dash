@@ -15,15 +15,11 @@
 	letter-spacing: 0.05em;
 }
 
-.brand > span {
-	display: grid;
-	width: 18px;
-	height: 18px;
-	place-items: center;
-	border-radius: 3px;
-	background: var(--color-accent);
-	color: var(--color-canvas);
-	font-weight: 800;
+.brandMark {
+	display: block;
+	width: 50px;
+	height: 50px;
+	flex-shrink: 0;
 }
 
 .brand small {
@@ -88,10 +84,32 @@
 	cursor: pointer;
 	font-size: 0.7rem;
 }
-.resetLayout:disabled { opacity: 0.45; cursor: not-allowed; }
-.resetLayout:not(:disabled):hover { color: var(--color-text-primary); background: var(--color-raised); }
-.resetLayout:focus-visible, .layoutLock:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-@media (max-width: 480px) { .connection { display: none; } .brand b { font-size: 0.6rem; } }
+
+.resetLayout:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.resetLayout:not(:disabled):hover {
+	color: var(--color-text-primary);
+	background: var(--color-raised);
+}
+
+.resetLayout:focus-visible,
+.layoutLock:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+	.connection {
+		display: none;
+	}
+
+	.brand b {
+		font-size: 0.6rem;
+	}
+}
 
 /* Fullscreen operates on the dashboard shell, leaving the module layout intact. */
 .fullscreen {
@@ -139,7 +157,8 @@
 	.topbar {
 		overflow-x: auto;
 	}
-	.topbar > * {
+
+	.topbar>* {
 		flex-shrink: 0;
 	}
 }

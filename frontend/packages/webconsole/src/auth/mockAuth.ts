@@ -1,32 +1,34 @@
-/**
- * Temporary FRONTEND-ONLY authentication for UI development.
- * This is NOT a security boundary. Replace it with server-side authentication
- * and authorization before connecting the console to real stand controls.
- */
-export const MOCK_CREDENTIALS = {
-	username: "operator",
-	password: "riverdash123",
-} as const;
+const API_SERVER = new URL("http://10.1.0.2:3000");
 
-const MOCK_SESSION_KEY = "river-dash-mock-session";
+let logged_in = false;
+export async function signInWithMockCredentials(
+	username: string,
+	password: string,
+): Promise<boolean> {
+	const res = await fetch(new URL("./login", API_SERVER), {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		credentials: "include",
+		body: JSON.stringify({
+			username: username,
+			password: password,
+		}),
+	});
 
-export function signInWithMockCredentials(username: string, password: string): boolean {
-	if (
-		username !== MOCK_CREDENTIALS.username ||
-		password !== MOCK_CREDENTIALS.password
-	) {
-		return false;
-	}
+	if (!res.ok) return false;
 
-	sessionStorage.setItem(MOCK_SESSION_KEY, "signed-in");
+	logged_in = true;
 	return true;
 }
 
 export function signOutOfMockSession(): void {
-	sessionStorage.removeItem(MOCK_SESSION_KEY);
+	cookieStore.delete("session");
+	logged_in = false;
 }
 
 export function canOpenDashboard(): boolean {
 	// Only the Vite dev server allows going directly to /dashboard.
-	return import.meta.env.DEV || sessionStorage.getItem(MOCK_SESSION_KEY) === "signed-in";
+	return import.meta.env.DEV || logged_in;
 }
