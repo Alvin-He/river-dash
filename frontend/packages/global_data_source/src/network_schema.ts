@@ -106,17 +106,14 @@ export const Enum_ds = zod.object({
 });
 export type Enum_dt = zod.infer<typeof Enum_ds>;
 
+export const TypedValue_ds = zod.object({
+	name: zod.string(),
+	type: zod.enum(DataTypes),
+	value: zod.unknown(),
+});
+
 export const ADT_ds = zod.object({
-	variants: zod.array(
-		zod.tuple([
-			zod.number(),
-			zod.object({
-				name: zod.string(),
-				type: zod.enum(DataTypes),
-				value: zod.unknown(),
-			}),
-		]),
-	),
+	variants: zod.array(zod.tuple([zod.number(), TypedValue_ds])),
 });
 export type ADT_dt = zod.infer<typeof ADT_ds>;
 
@@ -125,13 +122,7 @@ export const ADT_us = TaggedUnion_us.safeExtend({
 });
 export type ADT_ut = zod.infer<typeof ADT_us>;
 
-export const Group_ds = zod.array(
-	zod.object({
-		name: zod.string(),
-		type: zod.enum(DataTypes),
-		value: zod.unknown(),
-	}),
-);
+export const Group_ds = zod.array(TypedValue_ds);
 export type Group_d = zod.infer<typeof Group_ds>;
 
 export const Group_us = zod.array(zod.unknown());

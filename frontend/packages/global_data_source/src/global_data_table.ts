@@ -56,6 +56,7 @@ class TopicRegistered
 
 	read_instances = new Array<WeakRef<TopicRead<Any>>>();
 	write_instances = 0;
+	is_local = true;
 
 	constructor(
 		name: string,
@@ -63,6 +64,7 @@ class TopicRegistered
 		type: DataTypes_t,
 		init_or_declaration: Any,
 		init_ts?: Temporal.Instant,
+		over_the_network?: boolean,
 	) {
 		this.info = {
 			name,
@@ -72,6 +74,7 @@ class TopicRegistered
 		};
 		this.last_data = init_or_declaration;
 		this.last_data_ts = init_ts;
+		this.is_local = !over_the_network;
 	}
 
 	/** update this topic */
@@ -451,6 +454,8 @@ export class GlobalDataTable<T extends Transport> extends EventTarget {
 			topic.update(data, ts);
 			if (is_uninitialized)
 				this.dispatchEvent(new EventTopicInitialized(topic.info));
+
+			if (topic.is_local) return;
 
 			this.m_topic_stream_endpoint.stream_send_message(
 				new NetworkStreamMessage(
