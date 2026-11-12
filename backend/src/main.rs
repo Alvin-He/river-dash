@@ -5,34 +5,46 @@
 	3. sqlx lets us interface with our database file
 */
 
+use std::sync::Arc;
+
 use axum::{
 	Json, Router,
 	extract::{Path, State},
-    middleware::{self,Next},
 	http::StatusCode,
-	routing::{get, post},
+	middleware::{self, Next},
+	routing::{any, get, post},
 };
 
 use nile_common::comms::stream::{client::StreamClient, raw::StreamEvent};
 use sqlx::SqlitePool;
+use tokio::task;
 
 /// So we can let through if on localhost
 use std::net::SocketAddr;
 
+use axum::http::{HeaderValue, Method, header};
 /// Cookie use
 use tower_http::cors::CorsLayer;
-use axum::http::{HeaderValue, Method, header};
 
+mod data_stream;
 mod sql;
-
 mod tasks;
 
 /// Connects to database and opens port for frontend connection
 #[tokio::main]
 async fn main() {
-
-
 	let pool = sql::connect().await.expect("database connection failed");
+
+	let nile_stand = Arc::new(tasks::nile_client_receive::NileClient::new(
+		nile_common::comms::stream::client::StreamClient::connect(
+			"127.0.0.1:9090",
+		)
+		.expect("To be able to connect to nile"),
+	));
+
+	let replication_server = data_stream::replication::ReplicationServer::new();
+	let _topic_register =
+		data_stream::topic_registry::TopicRegistry::new(&replication_server);
 
 	let database = sql::Database::new(pool);
 	database.spawn_session_cleanup();
@@ -43,7 +55,6 @@ async fn main() {
 		.allow_methods([Method::GET, Method::POST, Method::DELETE])
 		.allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
 		.allow_credentials(true);
-
 
 	/// Inner routes after authentication
 	let protected = Router::new()
@@ -58,7 +69,18 @@ async fn main() {
 		.route_layer(middleware::from_fn_with_state(
 			database.clone(),
 			sql::Database::require_auth,
-		));
+		))
+		.route(
+			"/stream/ws",
+			any(async move |ws| {
+				data_stream::StreamProcessor::new(
+					&Arc::clone(&nile_stand),
+					&replication_server.clone(),
+				)
+				.ws_handler(ws)
+				.await
+			}),
+		);
 
 	// Showing callable routes
 	let app = Router::new()

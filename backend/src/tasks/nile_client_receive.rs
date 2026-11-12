@@ -12,11 +12,14 @@ use nile_common::{
 	time::MonoTime,
 };
 
-struct NILEValueUpdate {
+pub struct NILEValueUpdate {
 	pub value: Value,
 	pub dec: Dec,
 	pub timestamp: MonoTime,
 }
+
+pub type ReceiverValueStream = tokio::sync::broadcast::Receiver<NILEValueUpdate>;
+pub type ReceiverMessageStream = tokio::sync::broadcast::Receiver<Message<'static>>;
 
 pub struct NileClient {
 	client: StreamClient,
@@ -35,12 +38,12 @@ impl NileClient {
 	}
 
 	// get a receiver for stream values
-	pub fn get_stream_values(self) -> tokio::sync::broadcast::Receiver<NILEValueUpdate> {
+	pub fn get_stream_values(&self) -> ReceiverValueStream {
 		self.stream_vals.subscribe()
 	}
 
 	// get a receiver for stream messages
-	pub fn get_stream_messages(self) -> tokio::sync::broadcast::Receiver<Message<'static>> {
+	pub fn get_stream_messages(&self) -> ReceiverMessageStream {
 		self.stream_msgs.subscribe()
 	}
 

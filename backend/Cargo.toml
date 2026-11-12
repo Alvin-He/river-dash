@@ -4,12 +4,17 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-axum = "0.8"
+axum = { version = "0.8", features = ["macros", "ws"] }
 serde = { version = "1.0.229", features = ["derive"] }
 tokio = { version = "1.53.1", features = ["full"] }
-sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite", "macros", "time"] }
+sqlx = { version = "0.9", features = [
+    "runtime-tokio",
+    "sqlite",
+    "macros",
+    "time",
+] }
 nile-common = { git = "https://github.com/cpspacesystems/nile-common" }
-anyhow = "1.0"   # For clean error propagation
+anyhow = "1.0" # For clean error propagation
 dotenvy = "0.15" # For loading .env variables
 serde_json = "1" # Testing purposes
 tempfile = "3"   # Testing purposes (running connect() to sql)
@@ -20,3 +25,9 @@ base64 = "0.22"
 time = "0.3"
 axum-extra = { version = "0.10", features = ["cookie"] }
 tower-http = { version = "0.6", features = ["cors"] }
+futures-util = "0.3.34"
+itertools = "0.15.0"
+
+[[bin]]
+name = "main"
+path = "./src/main.rs"
