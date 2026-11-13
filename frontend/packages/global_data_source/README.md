@@ -2,8 +2,8 @@
 
 This is the shared data source and data manager for RiverDash.
 
-See [Usage](#usage) for examples and [Documentation](#documentation)
-for generated API references.
+See [#Usage](#usage) for usage instructions. See [#Documentation](#documentation)
+for how to access the docs.
 
 # Installation
 
@@ -19,8 +19,8 @@ then run `npm install`
 
 run `npm run build` to compile all files into "./dist".
 
-Build this workspace before importing it from another project; package
-exports point to compiled files in `dist/`.
+You*MUST** compile before attempting to import this package. Otherwise
+the import will just not work.
 
 # Documentation
 
@@ -28,8 +28,8 @@ To compile documentation, run: `npm run doc`.
 
 Then open "./docs/index.html" in a browser.
 
-If links in the generated documentation fail, try opening the generated
-`index.html` file directly in a browser.
+Note: Opening the docs on a http server might break links. So stick to opening
+it directly as a file in a browser. It works better than way for some reason.
 
 # Usage:
 
@@ -61,32 +61,42 @@ opened in either of 3 modes:
 
 #### Why use a Topic over JS primitives or REACT mechanisms:
 
-1. Topic updates can be propagated to other peers **when a real network
-   transport and synchronization are connected**. That allows multiple
-   windows or devices to share data, but it is not automatic. The current
-   `TransportNothing` does not send messages over a network, and River Dash's
-   browser-local mock stand is not synchronized between viewers.
+1. All Data is replicated or sent across the entire network. That means
+   if you update a topic. It is **guaranteed** that another window open
+   or another client connected on the same backend will receive that
+   data. This means:
+   - UI can be consistent across devices
+   - Any global state will be truly global instead of just one device
+   - You don't have to worry about synchronizing windows/devices
+   - You get the ability to broadcast data to everybody (aka very useful for log messages or announcements)
 
 2. You don't have to worry about the representation of data. Anything
    published over a Topic is basically a direct translation of NILE-stand
    data. So as long as you use the provided constraint methods (see Types
    documentation), you will be providing valid data to NILE stand.
 
-3. The topic system provides serialization and schema validation. A valid
-   message shape does not imply that a sensor reading is accurate or that
-   the transport delivered the message successfully.
+3. Network Serialization/Deserialization is all handled. The topic
+   system will provide serialization and deserialization. Along with
+   data verification. So you can assume that you have valid data.
+   Unless some piece of data have additional special meaning attached,
+   such as a `Message` containing JSON data. _Note: the Topic system
+   guarantees the data will be valid, but weather or not that data
+   makes sense is up to your interpretation._
 
 There are obviously some drawbacks to this architecture, namely:
 
-1. Propagating updates over an active network transport incurs a cost;
-   local-only topics avoid that transport overhead.
+1. Everything is over the network. So you are incurring a small network
+   cost if you update a piece of data. (You may omit `peer_mode` when
+   calling `initialize_topic` to make a topic local to the current
+   session only. Therefore removing this cost).
 2. You are writing more code, and also wrapping data in more objects.
    These actions introduce a performance penalty. In the grand scheme
    of things it's not much. But it will eventually add up if you are
    say updating an topic in a hot loop non stop.
 
-Consider topics for cross-module data sharing. Within a single React module,
-prefer ordinary React state and props unless topic semantics are needed.
+Please prefer to use a topic over other mechanisms of data passing if
+you are going beyond the UI Module boundary. With in a singular UI
+module, prefer to use JS native types or REACT native mechanisms to pass data when possible.
 
 ### DataTypes
 
@@ -110,9 +120,10 @@ That means you can have a `Group` of a `Group` and `ADT`. With the
 sub-`Group` containing a bunch of `F32`s.
 
 All of the numerical types also have checked(constrained) write
-methods. Use them to keep numeric values within their representable ranges.
+methods. Use they to make sure you are not writing a number to a topic
+outside of it's representable range.
 
-See `src/types.ts` for type-specific constraints.
+See documentation for `types.ts` for more information.
 
 ### GlobalDataTable - `GDT`
 

@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
-import type { Credentials } from "../../auth/authApi";
+import { useState, type SubmitEvent } from "react";
+import { signInWithMockCredentials } from "../../auth/mockAuth";
 import { BrandMark } from "../../components/BrandMark/BrandMark";
 import styles from "./LoginPage.module.css";
 
@@ -15,12 +15,12 @@ export function LoginPage({ onSignIn, notice }: LoginPageProps) {
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState("");
 
-	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+	async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 		if (pending) return;
 
-		if (!username.trim() || !password) {
-			setError("Enter both a username and password.");
+		if (await signInWithMockCredentials(username, password)) {
+			window.location.assign("/dashboard");
 			return;
 		}
 
@@ -41,7 +41,9 @@ export function LoginPage({ onSignIn, notice }: LoginPageProps) {
 		<main className={`login-screen ${styles.page}`}>
 			<div className={styles.center}>
 				<div className={styles.brand}>
-					<span className={styles.brandMark} aria-hidden="true"><BrandMark /></span>
+					<span className={styles.brandMark} aria-hidden="true">
+						<BrandMark />
+					</span>
 					<div className={styles.brandText}>
 						<strong>NILE CONSOLE</strong>
 						<span>RIVER DASH / REMOTE VIEWER</span>
@@ -57,7 +59,7 @@ export function LoginPage({ onSignIn, notice }: LoginPageProps) {
 						</p>
 					</div>
 
-					<form onSubmit={handleSubmit} noValidate>
+					<form onSubmit={(e) => handleSubmit(e)} noValidate>
 						<div className={styles.field}>
 							<label htmlFor="login-username">Username</label>
 							<input
@@ -103,7 +105,9 @@ export function LoginPage({ onSignIn, notice }: LoginPageProps) {
 									className={styles.passwordToggle}
 									disabled={pending}
 									onClick={() => setPasswordVisible((visible) => !visible)}
-									aria-label={passwordVisible ? "Hide password" : "Show password"}
+									aria-label={
+										passwordVisible ? "Hide password" : "Show password"
+									}
 								>
 									{passwordVisible ? "Hide" : "Show"}
 								</button>
@@ -120,7 +124,19 @@ export function LoginPage({ onSignIn, notice }: LoginPageProps) {
 					</form>
 				</section>
 
-				<p className={styles.footer}>NILE Console · Remote monitoring access</p>
+				{import.meta.env.DEV && (
+					<div className={styles.devPanel}>
+						<div className={styles.devHeader}>
+							<span className={styles.devDot} aria-hidden="true" />
+							<strong>Development mode</strong>
+						</div>
+						<a href="/dashboard">Open dashboard without signing in →</a>
+					</div>
+				)}
+
+				<p className={styles.footer}>
+					NILE Console · Mock authentication for development
+				</p>
 			</div>
 		</main>
 	);
