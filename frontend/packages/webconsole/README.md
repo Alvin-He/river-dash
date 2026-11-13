@@ -56,8 +56,8 @@ interactions and persistence.
 The dashboard fills the browser viewport and adapts module positions and sizes
 to narrower windows. Telemetry and graphs use demonstration streams. The
 operator has mock mode/valve controls, a stand simulator, and an in-memory event
-log; the P&ID module is a placeholder. A small, always-visible status badge identifies simulation/no-hardware mode and the current operating mode; it does not reserve dashboard height. Viewer
-browsers do not share the operator's simulated state.
+log; the P&ID module is a placeholder. Viewer browsers do not share the
+operator's simulated state.
 
 ### Fullscreen
 

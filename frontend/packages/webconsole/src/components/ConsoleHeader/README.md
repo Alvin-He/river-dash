@@ -14,6 +14,3 @@ optional props to keep it independent of the auth API.
 While Viewer management is open, `shortcutEnabled` is false so the global
 shortcut will not open a second dialog behind the modal.
 
-The separate small, always-visible `.console-operating-status` badge (App.css)
-identifies simulation/no-hardware mode and the user's access role. It is not
-a header and consumes no layout height.
