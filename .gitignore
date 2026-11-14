@@ -2,6 +2,7 @@
 node_modules/
 frontend/**/dist/
 frontend/**/dist-ssr/
+*.tsbuildinfo
 frontend/**/.viewer-dist/
 frontend/**/.lan-test-build/
 backend/target/

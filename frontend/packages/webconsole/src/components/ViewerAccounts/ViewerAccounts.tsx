@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
 import { createViewerAccount, type AccessRole } from "../../auth/authApi";
 import styles from "./ViewerAccounts.module.css";
 import { RemoteViewingControls } from "./RemoteViewingControls";
@@ -23,7 +23,7 @@ export function ViewerAccounts({ role, onClose }: { role: AccessRole; onClose: (
 		return () => document.removeEventListener("keydown", onKeyDown);
 	}, [onClose, pending]);
 
-	async function submit(event: FormEvent<HTMLFormElement>) {
+	async function submit(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 		if (pending) return;
 		if (!username.trim() || !password) {

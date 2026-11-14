@@ -89,21 +89,18 @@ export class NetworkTopicStream<T extends Transport> {
 			return err(`Serialize: ${String(error)}`);
 		}
 
-		console.log("Stream message", msg);
-		console.log("Serialized: ", serialized);
-
 		this.m_transport.send_data(serialized).then(
 			(r) => {
 				if (r)
 					r.match(
 						() => undefined,
 						(e) => {
-							console.log(`Send msg error. Reason ${e}`);
+							console.error(`Failed to send topic message: ${e}`);
 						},
 					);
 			},
 			(e) => {
-				console.log(`Failed to send msg. Reason ${e}`);
+				console.error(`Failed to send topic message: ${e}`);
 			},
 		);
 
@@ -116,8 +113,6 @@ export class NetworkTopicStream<T extends Transport> {
 
 	public start() {
 		this.stop();
-		console.log("Start Receive");
-
 		this.m_receiving = new AbortController();
 		void this.get_new_msgs();
 	}
@@ -130,13 +125,12 @@ export class NetworkTopicStream<T extends Transport> {
 		const abort_controller = this.m_receiving;
 		let msgs: string[] = [];
 		while (!abort_controller.signal.aborted) {
-			console.log("Receive task run");
 			for (const msg of msgs) {
 				let deserialized: unknown;
 				try {
 					deserialized = JSON.parse(msg) as unknown;
 				} catch (error: unknown) {
-					console.log(`Deserialize: ${String(error)}`);
+					console.error(`Invalid topic message JSON: ${String(error)}`);
 					continue;
 				}
 
@@ -149,16 +143,16 @@ export class NetworkTopicStream<T extends Transport> {
 							if (this.m_msg_cb) this.m_msg_cb(msg);
 						},
 						(e) =>
-							console.log(
-								`PARSE: Error occurred whiling parsing new message: ${e}`,
-							),
+							console.error(`Invalid topic message: ${e}`),
 					);
 			}
 
-			// this is here so that if aborted the new data is discarded
+			// Each received batch is processed once. Never replay the last batch
+			// after a transport error or after a previous successful read.
+			msgs = [];
 			(await this.m_transport.receive_data()).match(
-				(m) => (msgs = m),
-				(e) => console.log(`Error while receiving. Reason: ${e}`),
+				(m) => { msgs = m; },
+				(e) => { console.error(`Failed to receive topic messages: ${e}`); },
 			);
 		}
 	}
