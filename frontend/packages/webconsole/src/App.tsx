@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { uiController, standSimulator, operatorEvents } from "./controller/demoController";
+import { useStandMode } from "./controller/useStandMode";
 import { canOpenDashboard, signOutOfMockSession } from "./auth/mockAuth";
 import { ConsoleMenu } from "./components/ConsoleHeader/ConsoleMenu";
 import {
@@ -21,6 +23,7 @@ import "./App.css";
 /** Existing dashboard, now available at /dashboard. */
 function DashboardPage() {
 	const [isLocked, setIsLocked] = useState(false);
+	const standMode = useStandMode(uiController);
 	const [resetSequence, setResetSequence] = useState(0);
 	const consoleRef = useRef<HTMLElement>(null);
 	const canvasRef = useRef<DashboardCanvasHandle>(null);
@@ -226,6 +229,7 @@ function DashboardPage() {
 		<main ref={consoleRef} className="console">
 			<ConsoleMenu
 				isLocked={isLocked}
+				// standMode={standMode}
 				isFullscreen={isFullscreen}
 				fullscreenSupported={fullscreenSupported}
 				fullscreenError={fullscreenError}
@@ -244,12 +248,7 @@ function DashboardPage() {
 				onExportConfiguration={handleExportConfiguration}
 				onImportConfiguration={handleImportConfiguration}
 			/>
-			<DashboardCanvas
-				ref={canvasRef}
-				isLocked={isLocked}
-				resetSequence={resetSequence}
-				onModulesChange={setManagedModules}
-			/>
+			<DashboardCanvas isLocked={isLocked} resetSequence={resetSequence} controller={uiController} simulator={standSimulator} eventLog={operatorEvents} />
 		</main>
 	);
 }

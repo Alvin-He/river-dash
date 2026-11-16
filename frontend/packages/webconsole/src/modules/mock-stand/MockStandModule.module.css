@@ -1,0 +1,48 @@
+.content {
+	display: flex;
+	flex-direction: column;
+	gap: 9px;
+	width: 100%;
+	min-height: 0;
+	overflow-y: auto;
+	font-size: 0.65rem;
+}
+.content p {
+	margin: 0;
+	color: var(--color-text-secondary);
+	line-height: 1.35;
+}
+.content label {
+	color: var(--color-text-muted);
+}
+.content select,
+.content button {
+	min-height: 27px;
+	padding: 3px 7px;
+	border: 1px solid var(--color-border);
+	border-radius: 4px;
+	background: var(--color-raised);
+	color: var(--color-text-primary);
+	font-size: 0.65rem;
+}
+.content button {
+	cursor: pointer;
+}
+.content button:hover {
+	border-color: var(--color-accent);
+}
+
+/* Keep the auto-demo toggle readable inside the narrow simulator module. */
+.autoMode {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	font-size: 0.7rem;
+	line-height: 1.4;
+	cursor: pointer;
+}
+.autoMode input {
+	flex: none;
+	accent-color: var(--color-accent);
+	margin: 2px 0 0;
+}
