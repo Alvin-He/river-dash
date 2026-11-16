@@ -53,7 +53,7 @@ export function LoginPage({ onSignIn, notice }: LoginPageProps) {
 						<p className={styles.eyebrow}>VIEW-ONLY ACCESS</p>
 						<h1 id="login-title">Sign in</h1>
 						<p className={styles.description}>
-							Sign in with an account created by the local operator. This browser automatically joins as a view-only client; no viewer-mode setup is needed.
+							Enter Credentials created by Operator on LocalHost.
 						</p>
 					</div>
 
