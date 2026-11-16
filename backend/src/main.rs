@@ -14,6 +14,8 @@ use axum::{
 };
 
 use nile_common::comms::stream::{client::StreamClient, raw::StreamEvent};
+use nile_common::log;
+
 use sqlx::SqlitePool;
 
 /// So we can let through if on localhost
@@ -24,12 +26,28 @@ use tower_http::cors::CorsLayer;
 use axum::http::{HeaderValue, Method, header};
 
 mod sql;
-
 mod tasks;
+
+// Log setup as seen in nile_common::log
+const TAG: &str = "Backend";
+static FILE_TARGET: log::FileTarget<&str> = log::FileTarget::new(|| "backend.log");
+
+static TERM_TARGET: log::TargetFilter<log::TerminalTarget> =
+    log::TargetFilter::new(log::Severity::Info, log::TerminalTarget);
+
+static TARGET: log::CompoundTarget<'_> = log::compile(
+    &FILE_TARGET as &dyn log::Target,
+    &TERM_TARGET as &dyn log::Target,
+);
+
 
 /// Connects to database and opens port for frontend connection
 #[tokio::main]
 async fn main() {
+
+	// Set up logging, other operations will be able to see
+	log::set_global_target(&TARGET);
+	
 
 
 	let pool = sql::connect().await.expect("database connection failed");
