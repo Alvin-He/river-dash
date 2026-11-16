@@ -26,25 +26,27 @@ use axum::http::{HeaderValue, Method, header};
 /// Cookie use
 use tower_http::cors::CorsLayer;
 
-mod data_stream;
+mod intake;
 mod sql;
-mod tasks;
+mod stream;
+mod topics;
 
 /// Connects to database and opens port for frontend connection
 #[tokio::main]
 async fn main() {
 	let pool = sql::connect().await.expect("database connection failed");
 
-	let nile_stand = Arc::new(tasks::nile_client_receive::NileClient::new(
+	let replication_server = stream::replication::ReplicationServer::new();
+	let topic_register = Arc::new(std::sync::Mutex::new(topics::TopicRegistry::new(&replication_server)));
+
+	let nile_stand = intake::nile_stand::NileClient::new(
 		nile_common::comms::stream::client::StreamClient::connect(
 			"127.0.0.1:9090",
 		)
 		.expect("To be able to connect to nile"),
-	));
-
-	let replication_server = data_stream::replication::ReplicationServer::new();
-	let _topic_register =
-		data_stream::topic_registry::TopicRegistry::new(&replication_server);
+		topic_register.clone()
+	);
+	tokio::task::spawn(nile_stand.run_green_thread());
 
 	let database = sql::Database::new(pool);
 	database.spawn_session_cleanup();
@@ -73,12 +75,9 @@ async fn main() {
 		.route(
 			"/stream/ws",
 			any(async move |ws| {
-				data_stream::StreamProcessor::new(
-					&Arc::clone(&nile_stand),
-					&replication_server.clone(),
-				)
-				.ws_handler(ws)
-				.await
+				stream::StreamProcessor::new(&replication_server.clone())
+					.ws_handler(ws)
+					.await
 			}),
 		);
 

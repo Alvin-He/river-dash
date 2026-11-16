@@ -1,6 +1,5 @@
 pub mod replication;
-mod schema;
-pub mod topic_registry;
+pub mod schema;
 use axum::{
 	extract::{
 		WebSocketUpgrade,
@@ -11,29 +10,22 @@ use axum::{
 use futures_util::{Sink, Stream, StreamExt};
 
 use crate::{
-	data_stream::{
+	stream::{
 		replication::{
 			ReplicationNode, ReplicationServer, WebsocketReplicationNode,
 		},
-		topic_registry::TopicRegistry,
 	},
-	tasks::nile_client_receive,
 };
 
 pub struct StreamProcessor {
-	value_receiver: nile_client_receive::ReceiverValueStream,
-	log_receiver: nile_client_receive::ReceiverMessageStream,
 	rc_server: ReplicationServer,
 }
 
 impl StreamProcessor {
 	pub fn new(
-		nile_client: &nile_client_receive::NileClient,
 		rc_server: &ReplicationServer,
 	) -> StreamProcessor {
 		StreamProcessor {
-			value_receiver: nile_client.get_stream_values(),
-			log_receiver: nile_client.get_stream_messages(),
 			rc_server: rc_server.clone(),
 		}
 	}
