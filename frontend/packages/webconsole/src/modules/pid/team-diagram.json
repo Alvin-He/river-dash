@@ -1,0 +1,237 @@
+{
+  "schemaVersion": 1,
+  "id": "valerie-sample",
+  "name": "DE-Nile team diagram — DEMO bindings",
+  "equipment": [
+    {
+      "id": "tank1",
+      "kind": "tank",
+      "label": "TK101 Fuel Tank",
+      "position": {
+        "x": 330,
+        "y": 130
+      }
+    },
+    {
+      "id": "tank2",
+      "kind": "tank",
+      "label": "TK001 Fuel Tank",
+      "position": {
+        "x": 80,
+        "y": 130
+      }
+    },
+    {
+      "id": "tank3",
+      "kind": "tank",
+      "label": "TK201 Fuel Tank",
+      "position": {
+        "x": 1100,
+        "y": 130
+      }
+    },
+    {
+      "id": "pressure-transducer1",
+      "kind": "pressure-transducer",
+      "label": "PT101 Pressure Transducer",
+      "position": {
+        "x": 500,
+        "y": 60
+      },
+      "binding": {
+        "topic": "demo.pressure.pt101",
+        "valueType": "number",
+        "unit": "kPa",
+        "precision": 1
+      }
+    },
+    {
+      "id": "pressure-transducer2",
+      "kind": "pressure-transducer",
+      "label": "PT201 Pressure Transducer",
+      "position": {
+        "x": 930,
+        "y": 60
+      },
+      "binding": {
+        "topic": "demo.pressure.pt201",
+        "valueType": "number",
+        "unit": "kPa",
+        "precision": 1
+      }
+    },
+    {
+      "id": "check-valve1",
+      "kind": "check-valve",
+      "label": "CV101 Check Valve",
+      "position": {
+        "x": 430,
+        "y": 380
+      }
+    },
+    {
+      "id": "pneumatic-valve1",
+      "kind": "pneumatic-valve",
+      "label": "PV101 Pneumatic Valve",
+      "position": {
+        "x": 590,
+        "y": 380
+      },
+      "binding": {
+        "topic": "demo.valve.pv101",
+        "valueType": "string",
+        "states": [
+          {
+            "value": "open",
+            "label": "Open",
+            "color": "#16794b",
+            "visualState": "open"
+          },
+          {
+            "value": "closed",
+            "label": "Closed",
+            "color": "#b42318",
+            "visualState": "closedPV1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "engine",
+      "kind": "engine",
+      "label": "LC301 Engine",
+      "position": {
+        "x": 750,
+        "y": 480
+      }
+    },
+    {
+      "id": "pneumatic-valve2",
+      "kind": "pneumatic-valve",
+      "label": "PV201 Pneumatic Valve",
+      "position": {
+        "x": 900,
+        "y": 380
+      },
+      "binding": {
+        "topic": "demo.valve.pv201",
+        "valueType": "string",
+        "states": [
+          {
+            "value": "open",
+            "label": "Open",
+            "color": "#16794b",
+            "visualState": "open"
+          },
+          {
+            "value": "closed",
+            "label": "Closed",
+            "color": "#b42318",
+            "visualState": "closedPV2"
+          }
+        ]
+      }
+    },
+    {
+      "id": "check-valve2",
+      "kind": "check-valve",
+      "label": "CV201 Check Valve",
+      "position": {
+        "x": 1060,
+        "y": 380
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "gn2-line-1",
+      "source": "tank2",
+      "target": "tank1",
+      "sourceHandle": "top-source",
+      "targetHandle": "top-target",
+      "color": "#667085",
+      "strokeWidth": 3,
+      "routing": "orthogonal"
+    },
+    {
+      "id": "pt101-line",
+      "source": "tank1",
+      "target": "pressure-transducer1",
+      "sourceHandle": "top-source",
+      "targetHandle": "bottom-target",
+      "color": "#667085",
+      "strokeWidth": 3,
+      "routing": "orthogonal"
+    },
+    {
+      "id": "pt201-line",
+      "source": "pressure-transducer2",
+      "target": "tank3",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "top-target",
+      "color": "#667085",
+      "strokeWidth": 3,
+      "routing": "orthogonal"
+    },
+    {
+      "id": "fuel-line-1",
+      "source": "tank1",
+      "target": "check-valve1",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "left-target",
+      "color": "#C44900",
+      "strokeWidth": 3,
+      "routing": "orthogonal"
+    },
+    {
+      "id": "fuel-line-2",
+      "source": "check-valve1",
+      "target": "pneumatic-valve1",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "color": "#C44900",
+      "strokeWidth": 3,
+      "routing": "orthogonal"
+    },
+    {
+      "id": "fuel-line-3",
+      "source": "pneumatic-valve1",
+      "target": "engine",
+      "sourceHandle": "right-source",
+      "targetHandle": "fuel-top-target",
+      "color": "#C44900",
+      "strokeWidth": 3,
+      "routing": "orthogonal"
+    },
+    {
+      "id": "oxidizer-line-1",
+      "source": "engine",
+      "target": "pneumatic-valve2",
+      "sourceHandle": "oxidizer-top-source",
+      "targetHandle": "left-target",
+      "color": "#00A9D6",
+      "strokeWidth": 3,
+      "routing": "orthogonal"
+    },
+    {
+      "id": "oxidizer-line-2",
+      "source": "pneumatic-valve2",
+      "target": "check-valve2",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "color": "#00A9D6",
+      "strokeWidth": 3,
+      "routing": "orthogonal"
+    },
+    {
+      "id": "oxidizer-line-3",
+      "source": "check-valve2",
+      "target": "tank3",
+      "sourceHandle": "right-source",
+      "targetHandle": "bottom-target",
+      "color": "#00A9D6",
+      "strokeWidth": 3,
+      "routing": "orthogonal"
+    }
+  ]
+}

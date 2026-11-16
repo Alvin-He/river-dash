@@ -22,5 +22,8 @@
 		"globals": "^17.12.0",
 		"prettier": "^3.9.6",
 		"vitest": "^5.0.5"
+	},
+	"dependencies": {
+		"@de-nile/pid-viewer": "file:packages/denile/riverdash-handoff-0.1.1/de-nile-pid-viewer-0.1.1.tgz"
 	}
 }

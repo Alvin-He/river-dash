@@ -17,6 +17,7 @@ import {
 } from "../../modules/time-series-graph";
 import styles from "./DashboardCanvas.module.css";
 import type { LayoutSnapshot } from "../../layout/layoutConfigurations";
+import { PIDModule } from "../../modules/pid/PIDModule";
 
 export type ManagedModule = { id: string; kind: RepeatableModuleKind; label: string };
 
@@ -124,7 +125,7 @@ export function DashboardCanvas({ isLocked, resetSequence, controller, simulator
 					onResizeStart={beginResize("pid")}
 					onResizeEnd={endResize}
 				>
-					<PlaceholderModule title="P&ID" isAffected={affectedModuleIds.has("pid")} />
+					<PIDModule title="P&ID" isAffected={affectedModuleIds.has("pid")} />
 				</FloatingModule>
 
 				<FloatingModule
