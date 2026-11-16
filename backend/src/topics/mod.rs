@@ -7,7 +7,7 @@ use std::{
 };
 use tokio::sync::{Mutex, broadcast};
 
-use crate::data_stream::{
+use crate::stream::{
 	replication::{JSONMsg, ReplicationServer},
 	schema::{
 		AdtD, AdtU, DataType, EnumD, EnumU, GroupD, GroupU, MessageD, MessageU,
@@ -482,6 +482,10 @@ pub struct TopicUpdate {
 }
 
 impl TopicUpdate {
+	pub const fn new(data: ImplTypes, ts: SystemTime) -> Self {
+		Self { data, ts }
+	}
+
 	pub const fn get_data(&self) -> &ImplTypes {
 		&self.data
 	}

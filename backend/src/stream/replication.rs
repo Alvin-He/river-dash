@@ -7,8 +7,6 @@ use futures_util::{
 };
 use tokio::sync::{Mutex, Notify, broadcast};
 
-use crate::data_stream::topic_registry::TopicRegistry;
-
 pub type JSONMsg = Utf8Bytes;
 
 #[derive(Debug, Clone)]
