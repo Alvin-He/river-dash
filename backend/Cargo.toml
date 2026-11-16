@@ -25,9 +25,12 @@ base64 = "0.22"
 time = "0.3"
 axum-extra = { version = "0.10", features = ["cookie"] }
 tower-http = { version = "0.6", features = ["cors"] }
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
 futures-util = "0.3.34"
 itertools = "0.15.0"
 
 [[bin]]
 name = "main"
 path = "./src/main.rs"
+
