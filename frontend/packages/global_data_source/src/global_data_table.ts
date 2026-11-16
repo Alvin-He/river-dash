@@ -378,12 +378,14 @@ export class GlobalDataTable<T extends Transport> extends EventTarget {
 		init_ts?: Temporal.Instant,
 		peer_mode?: TopicOpenMode_t,
 	): TopicRW<D> | void {
+		const over_network = peer_mode != undefined;
 		const topic = new TopicRegistered(
 			name,
 			mode,
 			type,
 			init_data_or_declaration,
 			init_ts,
+			over_network,
 		);
 
 		this.declare_new_topic(topic);
@@ -393,14 +395,15 @@ export class GlobalDataTable<T extends Transport> extends EventTarget {
 			this.dispatchEvent(new EventTopicInitialized(topic.info));
 		}
 
-		// when peer mode is specified
-		if (peer_mode != undefined) {
+		// when topic is to be broadcasted over the network.
+		if (over_network) {
 			const peer_topic = new TopicRegistered(
 				name,
 				peer_mode,
 				type,
 				init_data_or_declaration,
 				init_ts,
+				true,
 			);
 
 			this.m_topic_stream_endpoint.stream_send_message(
