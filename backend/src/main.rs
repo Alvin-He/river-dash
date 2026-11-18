@@ -17,6 +17,7 @@ use nile_common::comms::stream::{client::StreamClient, raw::StreamEvent};
 use nile_common::log;
 
 use sqlx::SqlitePool;
+use tokio::task;
 
 /// So we can let through if on localhost
 use std::net::SocketAddr;
@@ -25,12 +26,14 @@ use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
 use axum::http::{HeaderValue, Method, header};
 
+mod intake;
 mod sql;
-mod tasks;
+mod stream;
+mod topics;
 
 // Log setup as seen in nile_common::log
 const TAG: &str = "Backend";
-static FILE_TARGET: log::FileTarget<&str> = log::FileTarget::new(|| "backend.log");
+static FILE_TARGET: log::FileTarget<&str> = log::FileTarget::new(|| "tmp/log.log");
 
 static TERM_TARGET: log::TargetFilter<log::TerminalTarget> =
     log::TargetFilter::new(log::Severity::Info, log::TerminalTarget);
@@ -47,10 +50,17 @@ async fn main() {
 
 	// Set up logging, other operations will be able to see
 	log::set_global_target(&TARGET);
+    nile_common::info!(TAG, "Backend starting");
 	
 
-
-	let pool = sql::connect().await.expect("database connection failed");
+	let pool = match sql::connect().await {
+		Ok(pool) => pool,
+		Err(e) => {
+			nile_common::critical!(TAG, "Database connection failed: {}", e);
+			std::process::exit(1);
+		}
+	};
+	nile_common::info!(TAG, "Database connected");
 
 	let database = sql::Database::new(pool);
 	database.spawn_session_cleanup();
