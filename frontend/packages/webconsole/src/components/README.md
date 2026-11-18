@@ -5,7 +5,8 @@ feature modules in `../modules/` supply domain content and its internal styling.
 
 ## Responsibilities
 
-- `ConsoleMenu` — floating dashboard actions (role-aware lock/reset, fullscreen, viewer management and viewer sign-out); Shift+M opens it without a top bar.
+- `ConsoleMenu` — floating, keyboard-accessible dashboard menu. It replaces the top bar and provides layout/fullscreen/account controls, named save/load/export/import layout actions,
+  and independent menu-button visibility/interactivity toggles.
 - `DashboardCanvas` — viewport measurement, registration of visible panels,
   layout-hook wiring, and scrollable canvas. It does not implement geometry math.
 - `FloatingModule` — `react-rnd` positioning and all eight resize handles;
@@ -53,5 +54,6 @@ remain unlit.
 Interactive controls in the header (buttons/inputs) are excluded from drag;
 use `[data-no-drag]` for other areas that must not begin dragging.
 
-See [`../layout/README.md`](../layout/README.md) for geometry and
-[`../modules/README.md`](../modules/README.md) for module registration.
+See `../layout/README.md` for the geometry lifecycle and
+[`MODULE_DEVELOPER_GUIDE.md`](../../../../../MODULE_DEVELOPER_GUIDE.md) for
+an end-to-end registration example.

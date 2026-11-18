@@ -29,3 +29,6 @@ __pycache__/
 
 # Keep Cargo.lock and frontend/package-lock.json in version control so
 # developers get reproducible dependency versions.
+
+# River Dash local application state
+.river-dash-state/

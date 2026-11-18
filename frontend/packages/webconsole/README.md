@@ -1,81 +1,35 @@
 # River Dash webconsole
 
-React, TypeScript, Vite, and `react-rnd` frontend for the NILE test-stand
-engineering dashboard.
+React, TypeScript, Vite, and `react-rnd` frontend for the NILE test-stand dashboard.
 
-## Start one frontend for operator and viewers
+## Run locally
 
-Start the Rust backend on port `3000`. Then run from `frontend/`:
-
-```sh
-npm install
-npm run dev --workspace=@river-dash/webconsole
-```
-
-- On the host computer, open `http://127.0.0.1:5173` to use the **operator**
-  dashboard. Open **Viewer management** from the floating menu (`Shift+M`) to create login credentials in the backend.
-- On another device on the LAN, open `http://<host-LAN-IP>:5173`. This
-  automatically shows the **viewer** sign-in screen without a separate
-  viewer-mode startup command.
-- A built frontend can be served the same way with
-  `npm run build --workspace=@river-dash/webconsole` followed by
-  `npm run preview --workspace=@river-dash/webconsole` (port `4173`).
-
-The normal dev and preview servers can accept LAN connections and proxy API
-requests to `127.0.0.1:3000`. The frontend gateway allows viewer sign-in and
-read-only configuration requests while rejecting viewer writes. **Keep port 3000 private**:
-the backend itself still exposes configuration write routes. See
-[authentication and deployment](AUTH_DEVELOPMENT.md) for details and caveats.
-
-## Optional temporary public link
-
-The local operator can enable a managed Cloudflare Quick Tunnel in **Viewer
-management**. It starts a separate viewer-only preview on loopback port `4174`
-and shows a temporary HTTPS link. This feature is disabled by default and does
-not affect local operation if Cloudflare is unavailable. See
-[Quick Tunnel setup](CLOUDFLARE_TUNNEL.md).
-
-## Development checks
+From `frontend/`, install dependencies with `npm install`, then use the `webconsole` workspace:
 
 ```sh
-npm run build --workspace=@river-dash/webconsole
-npm run lint --workspace=@river-dash/webconsole
+npm run dev --workspace=webconsole
+npm run build --workspace=webconsole
+npm run lint --workspace=webconsole
 ```
 
-## Current dashboard
+During development, `/login` provides a mock sign-in and `/dashboard` shows the console. The mock authentication behavior and its security limitations are documented in [AUTH_DEVELOPMENT.md](./AUTH_DEVELOPMENT.md).
 
-`src/components/DashboardCanvas/DashboardCanvas.tsx` registers the visible
-modules. Geometry, snapping, and resize constraints live in
-`src/layout/dashboardLayout.ts`; `src/layout/useDashboardLayout.ts` manages
-interactions and persistence.
+## Dashboard modules and layout
 
-- [Adding modules](src/modules/README.md)
-- [Shared component contracts](src/components/README.md)
-- [Layout behavior](src/layout/README.md)
+`src/components/DashboardCanvas/DashboardCanvas.tsx` registers visible modules. Layout geometry, snapping, and resize constraints are implemented in `src/layout/dashboardLayout.ts` and orchestrated by `src/layout/useDashboardLayout.ts`.
 
-The dashboard fills the browser viewport and adapts module positions and sizes
-to narrower windows. Telemetry and graphs use demonstration streams. The
-operator has mock mode/valve controls, a stand simulator, and an in-memory event
-log; the P&ID module is a placeholder. Viewer browsers do not share the
-operator's simulated state.
+- [Module authoring](./src/modules/README.md)
+- [Shared component contracts](./src/components/README.md)
+- [Layout behavior and registration](./src/layout/README.md)
+- [Repository-wide module developer guide](../../../MODULE_DEVELOPER_GUIDE.md)
 
-### Fullscreen
+The dashboard fills its browser window. Its default geometry uses a 1920 × 1080 reference; smaller windows adapt panel sizes and reflow when minimum panel dimensions require it.
+Navigation is in a floating menu (`Shift+M`); it does not reserve a top-bar row.
+The time-series graph is explicitly labeled **Demo** until real telemetry is wired in.
+It supports editable time windows and axes, vertical panning/zooming, and
+per-measurement visibility, colors and line types. New saved layouts also capture
+those graph preferences. See [Graph controls](../../../GRAPH_CONTROLS.md).
 
-On `/dashboard`, use **Full screen** in the floating menu (`Shift+M`) to request fullscreen mode.
-Use **Exit full screen** or **Esc** to return to the windowed view. Fullscreen
-changes the available viewport but does not reset the saved layout.
+## Fullscreen
 
-### Floating menu and access roles
-
-The former 48px top bar is removed. The menu icon floats over the dashboard
-near the upper-right corner and does not affect module geometry. Use `Shift+M`
-to toggle its dropdown; `Escape` or an outside click closes it. The dropdown
-has independent toggles for icon visibility and click availability; `Shift+M`
-works regardless. Preferences intentionally reset after refresh so the menu
-is recoverable. Text-entry fields do not trigger the shortcut.
-
-Operators can lock/edit the dashboard, reset its arrangement when unlocked,
-and open Viewer management (including remote-view controls). Viewers cannot
-access these actions, but can enter fullscreen and sign out. Access to actual
-backend operations remains enforced by the existing gateway/backend checks;
-menu visibility alone is not an authorization boundary.
+On `/dashboard`, the floating menu's **Full screen** button requests fullscreen for the dashboard. **Exit full screen** or **Esc** returns to the windowed view. The button is disabled if the browser does not expose the Fullscreen API, and the interface displays an error if the request fails. Fullscreen changes viewport sizing but does not reset the committed module layout.

@@ -1,16 +1,57 @@
 # Floating console menu
 
-The console has no permanent top bar. `ConsoleMenu` floats in the upper-right,
-with independent **Show floating icon** and **Allow icon clicks** toggles. These
-settings intentionally reset on refresh. `Shift+M` toggles the dropdown even if
-the icon is hidden or disabled; `Escape` and click-outside close it. Shortcut
-input is ignored in editable fields.
+`ConsoleMenu` replaces the old `ConsoleHeader`. It is an absolutely positioned
+sibling of `DashboardCanvas` inside `.console`. **There is no top bar and no
+reserved header height**; the dashboard surface uses the entire viewport.
+The trigger sits in the upper-right corner and the menu overlays, rather than
+reflows, draggable modules.
 
-`App.tsx` passes auth-derived role-gated callbacks. Only the local operator can
-edit/reset layouts or open Viewer management; viewer sessions can sign out.
-Fullscreen is available to both roles if supported. The component accepts
-optional props to keep it independent of the auth API.
+## Operator interactions
 
-While Viewer management is open, `shortcutEnabled` is false so the global
-shortcut will not open a second dialog behind the modal.
+- Click the floating icon, or press **Shift+M**, to open/close the menu.
+- Press **Escape** or click outside to close it. Escape is not prevented, so
+  browsers can still exit fullscreen normally.
+- `Shift+M` is ignored while typing in a text field or editable element.
+- The **Show floating icon** and **Allow icon clicks** checkboxes are
+  independent. Both default to enabled and reset on page reload. If either or
+  both are disabled, **Shift+M still opens the menu**, so it cannot become
+  permanently inaccessible.
+- Layout reset remains disabled while layout editing is locked. Fullscreen
+  remains disabled when unsupported by the browser.
 
+## Auth branch integration
+
+The menu does not import authentication or controller code. `App.tsx` in the UI
+branch passes the existing layout, fullscreen, and mock sign-out callbacks.
+When bringing the auth branch forward, pass these optional props:
+
+- `accessRole="viewer" | "operator"`: hides layout editing and account
+  management for view-only sessions.
+- `onManageAccounts`: adds **Viewer management** for operators only.
+- `onSignOut`, `signingOut`: shows the existing sign-out action (supply only
+  where the auth branch allows sign-out).
+- `statusLabel`: displays an authoritative, noninteractive status label in
+  the menu. **Actual hardware mode, safety status, and critical warnings
+  should also stay persistently visible in a dedicated status surface, not
+  solely in this menu.**
+
+Do not restore the old `LIVE · 24.8 Hz` string: it was hardcoded in the UI
+branch and does not represent verified telemetry. Likewise, `Shift+M` must not
+interfere with operator text inputs, and presentation-level role checks do
+not replace server-side authorization.
+
+## Saved layouts
+
+The **Saved layouts** group appears when optional `onSaveConfiguration` and
+`onLoadConfiguration` callbacks are supplied for a non-viewer session. An
+operator can enter a name, save the currently committed geometry, load a named
+configuration (only when unlocked), download JSON, import JSON, or delete a
+preset. The menu itself does not access browser storage, import geometry, or
+assume an authentication scheme: `App.tsx` supplies those operations via
+`layoutConfigurations.ts` and `DashboardCanvas`'s imperative layout handle.
+
+`layoutConfigurations` and `layoutMessage` display saved items and feedback;
+`onDeleteConfiguration`, `onExportConfiguration`, and `onImportConfiguration`
+are optional. Viewers do not see these controls. Client-side hiding is a UI
+measure only; a future auth-enabled implementation must separately enforce
+appropriate authorization and scope stored layouts to accounts if required.
