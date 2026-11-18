@@ -35,7 +35,11 @@ export type ValveCommand = {
 };
 export type ModeCommand = { id: string; mode: OperatingMode };
 export type FireCommand = { id: string } & FireTiming;
-export type CommandResponse = {
+/**
+ * Browser-only acknowledgment shape. This is NOT nile-common's wire-level
+ * CommandResponse, which uses CommandResponseKind and command-type IDs.
+ */
+export type MockCommandResponse = {
 	id: string;
 	accepted: boolean;
 	message: string;
@@ -46,7 +50,7 @@ export type TopicValues = {
 	[TOPICS.valveStates]: ValveStates;
 	[TOPICS.valveRequest]: ValveCommand;
 	[TOPICS.fireRequest]: FireCommand;
-	[TOPICS.commandResponse]: CommandResponse;
+	[TOPICS.commandResponse]: MockCommandResponse;
 };
 export type TopicName = keyof TopicValues;
 export type Unsubscribe = () => void;

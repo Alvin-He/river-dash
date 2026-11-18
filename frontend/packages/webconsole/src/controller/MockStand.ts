@@ -1,10 +1,9 @@
-import { evaluateModeTransition } from "./modeRules";
-import { canRequestValve } from "./UIController";
+import { canRequestValve, evaluateModeTransition } from "./modeRules";
 import { validateFireTiming } from "./fireTiming";
 import {
 	TOPICS,
 	VALVES,
-	type CommandResponse,
+	type MockCommandResponse,
 	type FireCommand,
 	type ModeCommand,
 	type OperatingMode,
@@ -53,7 +52,7 @@ export interface StandSimulator {
 	getAcceptedValveReports(): readonly AcceptedMockValve[];
 	subscribeToQueue(listener: () => void): Unsubscribe;
 	/** Evaluate the next mock request, or force a mock rejection. Never changes reported state. */
-	respondToPending(shouldAccept: boolean): CommandResponse | null;
+	respondToPending(shouldAccept: boolean): MockCommandResponse | null;
 	/** Publish a simulated stand report for an already accepted mode request. */
 	publishAcceptedModeReport(): AcceptedMockMode | null;
 	/** Publish a *separate* mock valve telemetry update for one accepted command. */
@@ -114,6 +113,7 @@ export class MockStand implements StandSimulator {
 		this.notifyQueue();
 	}
 
+	/** Direct mock telemetry injection; intentionally bypasses transition rules. */
 	reportMode(mode: OperatingMode): void {
 		this.topics.publish(TOPICS.reportedMode, mode);
 	}
@@ -155,7 +155,7 @@ export class MockStand implements StandSimulator {
 	 * click can still produce a rejection. Rejection is always available for
 	 * testing. SAFE bypasses ordinary requirements but has no physical effect.
 	 */
-	respondToPending(shouldAccept: boolean): CommandResponse | null {
+	respondToPending(shouldAccept: boolean): MockCommandResponse | null {
 		const index = this.nextRequestIndex();
 		if (index < 0) return null;
 
@@ -164,7 +164,7 @@ export class MockStand implements StandSimulator {
 			? this.rejectionReason(command)
 			: "Simulated stand rejection";
 		const accepted = reason === null;
-		const response: CommandResponse = {
+		const response: MockCommandResponse = {
 			id: command.id,
 			accepted,
 			message: accepted

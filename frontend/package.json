@@ -8,7 +8,8 @@
 	"main": "index.js",
 	"scripts": {
 		"format": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc",
-		"test": "npm run test:lan-access --workspace=@river-dash/webconsole && npm run test --workspace=@river-dash/global-data-source"
+		"test": "npm run test:controller --workspace=@river-dash/webconsole && npm run test:lan-access --workspace=@river-dash/webconsole && npm run test --workspace=@river-dash/global-data-source",
+		"test:ui": "npm run test:ui --workspace=@river-dash/webconsole"
 	},
 	"workspaces": [
 		"packages/*"

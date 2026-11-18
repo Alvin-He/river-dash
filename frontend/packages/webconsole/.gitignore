@@ -29,3 +29,7 @@ dist-ssr
 # Optional locally managed Quick Tunnel state and viewer build
 .viewer-dist/
 .river-dash-state/
+
+# Playwright test artifacts
+playwright-report/
+test-results/

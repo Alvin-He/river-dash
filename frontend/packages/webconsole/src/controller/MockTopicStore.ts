@@ -4,7 +4,7 @@ import type {
 	TopicValues,
 	TopicWriter,
 	Unsubscribe,
-} from "./topics.ts";
+} from "./topics";
 
 type Listener = (value: TopicValues[TopicName] | undefined) => void;
 
@@ -54,7 +54,10 @@ export class MockTopicStore implements TopicReader, TopicWriter {
 		this.notify(topic, undefined);
 	}
 
-	private notify(topic: TopicName, value: TopicValues[TopicName] | undefined): void {
+	private notify(
+		topic: TopicName,
+		value: TopicValues[TopicName] | undefined,
+	): void {
 		// Snapshot prevents changes to the listener set disrupting this update.
 		for (const listener of [...(this.listeners.get(topic) ?? [])]) {
 			listener(value);

@@ -31,7 +31,7 @@ describe("NILE valve definitions", () => {
 			expect(canRequestValve("CHECKOUT", id)).toBe(true);
 			expect(canRequestValve("OX_FILL", id)).toBe(id === "OF" || id === "OV");
 			expect(canRequestValve("SAFE", id)).toBe(false);
-			expect(canRequestValve("PRESSURIZATION_FIRE", id)).toBe(false);
+			expect(canRequestValve("PRESSURIZATION_FIRE", id)).toBe(["OP", "OV", "FP", "FV"].includes(id),);
 			expect(canRequestValve(null, id)).toBe(false);
 		}
 	});
