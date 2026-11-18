@@ -6,11 +6,11 @@
 */
 
 use axum::{
-	Json, Router,
-	extract::{Path, State},
+    Json, Router,
+    extract::{Path, State},
     middleware::{self,Next},
-	http::StatusCode,
-	routing::{get, post},
+    http::StatusCode,
+    routing::{get, post},
 };
 
 use nile_common::comms::stream::{client::StreamClient, raw::StreamEvent};
@@ -48,19 +48,24 @@ static TARGET: log::CompoundTarget<'_> = log::compile(
 #[tokio::main]
 async fn main() {
 
-	// Set up logging, other operations will be able to see
-	log::set_global_target(&TARGET);
-    nile_common::info!(TAG, "Backend starting");
-	
+	// TODO: Find permanent space where logs will live
+	if let Err(e) = std::fs::create_dir_all("tmp") {
+        eprintln!("Failed to create tmp directory: {e}");
+        std::process::exit(1);
+    }
 
-	let pool = match sql::connect().await {
-		Ok(pool) => pool,
-		Err(e) => {
-			nile_common::critical!(TAG, "Database connection failed: {}", e);
-			std::process::exit(1);
-		}
-	};
-	nile_common::info!(TAG, "Database connected");
+    // Set up logging, other operations will be able to see
+    log::set_global_target(&TARGET);
+    nile_common::info!(TAG, "Backend starting");
+
+    let pool = match sql::connect().await {
+        Ok(pool) => pool,
+        Err(e) => {
+            nile_common::critical!(TAG, "Database connection failed: {}", e);
+            std::process::exit(1);
+        }
+    };
+    nile_common::info!(TAG, "Database connected");
 
 	let database = sql::Database::new(pool);
 	database.spawn_session_cleanup();
