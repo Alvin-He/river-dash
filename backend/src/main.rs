@@ -6,15 +6,18 @@
 */
 
 use axum::{
-	Json, Router,
-	extract::{Path, State},
+    Json, Router,
+    extract::{Path, State},
     middleware::{self,Next},
-	http::StatusCode,
-	routing::{get, post},
+    http::StatusCode,
+    routing::{get, post},
 };
 
 use nile_common::comms::stream::{client::StreamClient, raw::StreamEvent};
+use nile_common::log;
+
 use sqlx::SqlitePool;
+use tokio::task;
 
 /// So we can let through if on localhost
 use std::net::SocketAddr;
@@ -23,16 +26,46 @@ use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
 use axum::http::{HeaderValue, Method, header};
 
+mod intake;
 mod sql;
+mod stream;
+mod topics;
 
-mod tasks;
+// Log setup as seen in nile_common::log
+const TAG: &str = "Backend";
+static FILE_TARGET: log::FileTarget<&str> = log::FileTarget::new(|| "tmp/log.log");
+
+static TERM_TARGET: log::TargetFilter<log::TerminalTarget> =
+    log::TargetFilter::new(log::Severity::Info, log::TerminalTarget);
+
+static TARGET: log::CompoundTarget<'_> = log::compile(
+    &FILE_TARGET as &dyn log::Target,
+    &TERM_TARGET as &dyn log::Target,
+);
+
 
 /// Connects to database and opens port for frontend connection
 #[tokio::main]
 async fn main() {
 
+	// TODO: Find permanent space where logs will live
+	if let Err(e) = std::fs::create_dir_all("tmp") {
+        eprintln!("Failed to create tmp directory: {e}");
+        std::process::exit(1);
+    }
 
-	let pool = sql::connect().await.expect("database connection failed");
+    // Set up logging, other operations will be able to see
+    log::set_global_target(&TARGET);
+    nile_common::info!(TAG, "Backend starting");
+
+    let pool = match sql::connect().await {
+        Ok(pool) => pool,
+        Err(e) => {
+            nile_common::critical!(TAG, "Database connection failed: {}", e);
+            std::process::exit(1);
+        }
+    };
+    nile_common::info!(TAG, "Database connected");
 
 	let database = sql::Database::new(pool);
 	database.spawn_session_cleanup();
