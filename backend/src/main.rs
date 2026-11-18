@@ -16,6 +16,8 @@ use axum::{
 };
 
 use nile_common::comms::stream::{client::StreamClient, raw::StreamEvent};
+use nile_common::log;
+
 use sqlx::SqlitePool;
 use tokio::task;
 
@@ -31,9 +33,25 @@ mod sql;
 mod stream;
 mod topics;
 
+// Log setup as seen in nile_common::log
+const TAG: &str = "Backend";
+static FILE_TARGET: log::FileTarget<&str> = log::FileTarget::new(|| "backend.log");
+
+static TERM_TARGET: log::TargetFilter<log::TerminalTarget> =
+    log::TargetFilter::new(log::Severity::Info, log::TerminalTarget);
+
+static TARGET: log::CompoundTarget<'_> = log::compile(
+    &FILE_TARGET as &dyn log::Target,
+    &TERM_TARGET as &dyn log::Target,
+);
+
+
 /// Connects to database and opens port for frontend connection
 #[tokio::main]
 async fn main() {
+	// Set up logging, other operations will be able to see
+	log::set_global_target(&TARGET);
+	
 	let pool = sql::connect().await.expect("database connection failed");
 
 	let replication_server = stream::replication::ReplicationServer::new();
