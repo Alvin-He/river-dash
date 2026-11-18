@@ -8,13 +8,12 @@ use axum::{
 	response::{IntoResponse, Response},
 };
 use futures_util::{Sink, Stream, StreamExt};
+use nile_common::log;
 
 use crate::{
-	stream::{
-		replication::{
+	LOG_TAG, stream::replication::{
 			ReplicationNode, ReplicationServer, WebsocketReplicationNode,
 		},
-	},
 };
 
 pub struct StreamProcessor {
@@ -34,10 +33,10 @@ impl StreamProcessor {
 		let rc_server = self.rc_server.clone();
 		ws.protocols(["RiverDash.pubsub.v1"])
 			.on_failed_upgrade(|e| {
-				println!("Failed to upgrade: {e}");
+				log!(log::Severity::Error, LOG_TAG, "WebSocket Failed to upgrade: {e}");
 			})
 			.on_upgrade(async move |w| {
-				println!("Got WS Connection");
+				log!(log::Severity::Info, LOG_TAG, "Got new WS Connection");
 				WebsocketReplicationNode::new(w).replicate_to(&rc_server)
 			})
 	}

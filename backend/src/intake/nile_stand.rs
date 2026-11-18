@@ -8,17 +8,19 @@ use std::{
 	time::{self, Duration, SystemTime, UNIX_EPOCH},
 };
 
+use nile_common::log;
 use nile_common::{
 	comms::stream::{
 		client::StreamClient,
 		raw::{Dec, DecHandle, StreamEvent, Value, ValueUpdate},
 	},
-	log::Message,
+	log::{Message, Severity},
 	time::MonoTime,
 };
 use tokio::{sync::broadcast, task::spawn_blocking};
 
 use crate::{
+	LOG_TAG,
 	stream::schema::TopicOpenMode,
 	topics::{DefTypes, ImplTypes, Topic, TopicRegistry, TopicUpdate},
 };
@@ -100,17 +102,26 @@ impl NileClient {
 				));
 			}
 			Ok(Some(StreamEvent::Ping(ping))) => {
-				println!("Info: Got Nile Stand ping from {}", ping.micros());
+				log!(
+					Severity::Debug,
+					LOG_TAG,
+					"Got Nile Stand ping from time `{}`",
+					ping.micros()
+				);
 			}
 			Ok(Some(StreamEvent::ValueDeclared(name, d))) => {
 				let dec = if let Some(v) = self.client.lookup(d) {
 					v
 				} else {
-					println!(
+					log!(
+						Severity::Error,
+						LOG_TAG,
 						"CRITICAL: DecHandle given but can not be looked up!"
 					);
 					return;
 				};
+
+				log!(Severity::Info, LOG_TAG, "Got Declaration from NILE Stand for `{name}`");
 
 				let topic = Topic::new(
 					name,
@@ -126,21 +137,25 @@ impl NileClient {
 						.await
 						.init_network_topic(topic, TopicOpenMode::Read);
 				}
-
-				println!("Topic Inited");
 			}
 			Ok(Some(StreamEvent::ValueUndeclared(_d))) => {
 				// we do not handle this at all. Alvin confirmed okay behavior with Evan
 			}
 			Ok(Some(StreamEvent::ValueUpdated(u))) => {
-				let sender = if let Some(v) =
-					self.map_value_sender.get(&u.dec_handle)
-				{
-					v
-				} else {
-					println!("CRITICAL: DecHandle does not map to a topic!");
-					return;
-				};
+				let sender =
+					if let Some(v) = self.map_value_sender.get(&u.dec_handle) {
+						v
+					} else {
+						log!(
+							Severity::Error,
+							LOG_TAG,
+							"DecHandle `{}` does not map to a topic!",
+							u.dec_handle
+						);
+						return;
+					};
+
+				log!(Severity::Debug, LOG_TAG, "Received Update");
 
 				_ = sender.send(TopicUpdate::new(
 					Self::from_nile_val_to_impl(u.value),
@@ -149,7 +164,7 @@ impl NileClient {
 			}
 			Ok(None) => {}
 			Err(e) => {
-				println!("NILE Stand: Got error: {}", e);
+				log!(Severity::Error, LOG_TAG, "Error on NILE Stand connection: {}", e);
 			}
 		}
 	}

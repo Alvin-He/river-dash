@@ -10,3 +10,7 @@ backend/target
 
 # River Dash local application state
 .river-dash-state/
+*.db
+
+# logs
+*.log

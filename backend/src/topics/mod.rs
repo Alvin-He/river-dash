@@ -1,4 +1,6 @@
 use itertools::Itertools;
+use nile_common::log::{Severity};
+use nile_common::log;
 use std::{
 	collections::HashMap,
 	ops::{Deref, DerefMut},
@@ -10,6 +12,7 @@ use tokio::sync::{
 	broadcast::{self, error::RecvError},
 };
 
+use crate::{BROADCAST_CHANNEL_SIZE, LOG_TAG};
 use crate::stream::{
 	replication::{JSONMsg, ReplicationServer},
 	schema::{
@@ -556,7 +559,7 @@ impl Topic {
 			mode,
 			def: definition,
 			peer_mode: None,
-			stream: broadcast::Sender::new(128),
+			stream: broadcast::Sender::new(BROADCAST_CHANNEL_SIZE),
 		}
 	}
 
@@ -589,16 +592,16 @@ impl Topic {
 						match json {
 							Ok(bytes) => _ = tx.send(bytes),
 							Err(e) => {
-								println!("Unable to serialize update: {e}");
+								log!(Severity::Error, LOG_TAG, "Topic: Unable to serialize update: {e}");
 							}
 						}
 					}
 					Err(RecvError::Closed) => {
-						println!("Topic self stream close.");
+						log!(Severity::Error, LOG_TAG, "Topic Dead: Self Rx Stream Closed.");
 						break;
 					}
 					Err(RecvError::Lagged(n)) => {
-						println!("Topic self stream lagged {n}");
+						log!(Severity::Warning, LOG_TAG, "Topic Dead: Topic self stream lagged {n}");
 					}
 				}
 			}
@@ -694,7 +697,7 @@ impl TopicRegistryData {
 		let msg = match topic.network_serialize_declare_msg() {
 			Ok(v) => v,
 			Err(e) => {
-				println!("Unable to serialize declare: {e}");
+				log!(Severity::Error, LOG_TAG, "Topic: Unable to serialize declare: {e}");
 				return;
 			}
 		};
@@ -741,7 +744,7 @@ impl TopicRegistry {
 						{
 							Ok(m) => m,
 							Err(e) => {
-								println!("Unable to deserialize message! {e}");
+								log!(Severity::Error, LOG_TAG, "Topic Registry: Unable to deserialize message! {e}");
 								continue;
 							}
 						};
@@ -764,8 +767,10 @@ impl TopicRegistry {
 									.network_deserialize_update(
 										deserialized.data,
 									) {
-									println!(
-										"Unable to deserialize update! {e}"
+									log!(
+										Severity::Error,
+										LOG_TAG,
+										"Topic: Unable to deserialize update: {e}"
 									);
 									continue;
 								};
@@ -777,8 +782,9 @@ impl TopicRegistry {
 									) {
 										Ok(t) => Arc::new(t),
 										Err(e) => {
-											println!(
-												"Unable to deserialize declare! {e}"
+											log!(Severity::Error,
+												LOG_TAG,
+												"Topic: Unable to deserialize declare: {e}"
 											);
 											continue;
 										}
@@ -792,11 +798,11 @@ impl TopicRegistry {
 						}
 					}
 					Err(RecvError::Closed) => {
-						println!("TR Replicate rx closed.");
+						log!(Severity::Error, LOG_TAG, "Topic Registry: RepServer RX closed.");
 						break;
 					}
 					Err(RecvError::Lagged(n)) => {
-						// println!("TR Replicate lagged {n}");
+						log!(Severity::Warning, LOG_TAG, "Topic Registry: RX Replicate lagged {n}");
 						continue;
 					}
 				}
@@ -814,11 +820,11 @@ impl TopicRegistry {
 				let tx = match bootstrap.recv().await {
 					Ok(v) => v,
 					Err(RecvError::Closed) => {
-						println!("Bootstrap watcher closed.");
+						log!(Severity::Error, LOG_TAG, "Topic Registry: Bootstrap watcher closed.");
 						return;
 					}
 					Err(RecvError::Lagged(n)) => {
-						println!("Bootstrap watcher lagged {n}!");
+						log!(Severity::Warning, LOG_TAG, "Topic Registry: Bootstrap watcher lagged {n}!");
 						continue;
 					}
 				};
@@ -830,13 +836,13 @@ impl TopicRegistry {
 					.for_each(|res| match res {
 						Ok(msg) => _ = tx.send(msg),
 						Err(e) => {
-							println!(
-								"Unable to serialize declare for bootstrap! {e}"
+							log!(Severity::Error, LOG_TAG,
+								"Topic Registry: Unable to serialize declare for bootstrap! {e}"
 							);
 						}
 					});
 
-				println!("Sent Bootstrap");
+				log!(Severity::Debug, LOG_TAG, "Topic Registry: Sent Bootstrap");
 			}
 		});
 	}

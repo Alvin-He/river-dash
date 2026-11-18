@@ -15,7 +15,7 @@ use axum::{
 	routing::{any, get, post},
 };
 
-use nile_common::comms::stream::{client::StreamClient, raw::StreamEvent};
+use nile_common::{comms::stream::{client::StreamClient, raw::StreamEvent}, log::Severity};
 use nile_common::log;
 
 use sqlx::SqlitePool;
@@ -33,8 +33,14 @@ mod sql;
 mod stream;
 mod topics;
 
+/// default listen addr
+pub const BACKEND_DEFAULT_ADDR: &'static str = "0.0.0.0:9090";
+/// default number of slots per channel
+pub const BROADCAST_CHANNEL_SIZE: usize = 1028;
+
+
 // Log setup as seen in nile_common::log
-const TAG: &str = "Backend";
+pub const LOG_TAG: &'static str = "Backend";
 static FILE_TARGET: log::FileTarget<&str> = log::FileTarget::new(|| "tmp/log.log");
 
 static TERM_TARGET: log::TargetFilter<log::TerminalTarget> =
@@ -58,16 +64,16 @@ async fn main() {
 
     // Set up logging, other operations will be able to see
     log::set_global_target(&TARGET);
-    nile_common::info!(TAG, "Backend starting");
+    nile_common::info!(LOG_TAG, "Backend starting");
 
     let pool = match sql::connect().await {
         Ok(pool) => pool,
         Err(e) => {
-            nile_common::critical!(TAG, "Database connection failed: {}", e);
+            nile_common::critical!(LOG_TAG, "Database connection failed: {}", e);
             std::process::exit(1);
         }
     };
-    nile_common::info!(TAG, "Database connected");
+    nile_common::info!(LOG_TAG, "Database connected");
 
 	let replication_server = stream::replication::ReplicationServer::new();
 	let topic_register = topics::TopicRegistry::new(&replication_server);
@@ -125,8 +131,8 @@ async fn main() {
 		.with_state(database);
 
 	// Listen for a client
-	let listener = tokio::net::TcpListener::bind("0.0.0.0:9090").await.unwrap();
-	println!("Listening on http://127.0.0.1:9090");
+	let listener = tokio::net::TcpListener::bind(BACKEND_DEFAULT_ADDR).await.unwrap();
+	log!(Severity::Info, LOG_TAG, "Listening on http://{BACKEND_DEFAULT_ADDR}");
 
 	/// Serve AND see client's address
 	axum::serve(

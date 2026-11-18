@@ -5,10 +5,14 @@ use futures_util::{
 	SinkExt, StreamExt,
 	stream::{SplitSink, SplitStream},
 };
+use nile_common::log;
+use nile_common::log::Severity;
 use tokio::sync::{
 	Mutex, Notify,
 	broadcast::{self, error::RecvError},
 };
+
+use crate::{BROADCAST_CHANNEL_SIZE, LOG_TAG};
 
 pub type JSONMsg = Utf8Bytes;
 
@@ -22,8 +26,8 @@ pub struct ReplicationServer {
 impl ReplicationServer {
 	pub fn new() -> Self {
 		Self {
-			channel: broadcast::Sender::new(128),
-			bootstrap: broadcast::Sender::new(128),
+			channel: broadcast::Sender::new(BROADCAST_CHANNEL_SIZE),
+			bootstrap: broadcast::Sender::new(BROADCAST_CHANNEL_SIZE),
 		}
 	}
 
@@ -36,8 +40,8 @@ impl ReplicationServer {
 	}
 
 	pub fn request_bootstrap(&self) -> broadcast::Receiver<JSONMsg> {
-		println!("Request Bootstrap");
-		let (sender, receiver) = broadcast::channel(128);
+		log!(Severity::Info, LOG_TAG, "Request Bootstrap");
+		let (sender, receiver) = broadcast::channel(BROADCAST_CHANNEL_SIZE);
 		_ = self.bootstrap.send(sender);
 		receiver
 	}
@@ -82,19 +86,28 @@ impl ReplicationNode for WebsocketReplicationNode {
 				match rep_rx.recv().await {
 					Ok(data) => {
 						if let Err(e) = tx.send(Message::Text(data)).await {
-							println!(
-								"Replication to WebSocket encountered an error: {e}"
+							log!(
+								Severity::Error,
+								LOG_TAG,
+								"Stopping Replication: WebSocket error: {e}"
 							);
-							println!("Stopping Replication.");
 							break;
 						};
 					}
 					Err(RecvError::Closed) => {
-						println!("WebSocket closed, stopping replication out.");
+						log!(
+							Severity::Info,
+							LOG_TAG,
+							"Stopping Replication: RepServer closed."
+						);
 						break;
 					}
 					Err(RecvError::Lagged(n)) => {
-						println!("WebSocket Replication lagged {n}");
+						log!(
+							Severity::Warning,
+							LOG_TAG,
+							"Replication Lagged: RepServer RX -> WebSocket TX by {n}"
+						);
 						continue;
 					}
 				}
@@ -111,11 +124,28 @@ impl ReplicationNode for WebsocketReplicationNode {
 						_ = rep_tx.send(utf8_bytes);
 					}
 					Message::Binary(_) => {
-						println!("Only text data supported!");
+						log!(
+							Severity::Error,
+							LOG_TAG,
+							"WebSocket Unsupported transport: Only text data supported!"
+						);
 					}
-					Message::Ping(_) => {}
+					Message::Ping(msg) => {
+						log!(
+							Severity::Debug,
+							LOG_TAG,
+							"WebSocket Ping: {}",
+							String::from_utf8_lossy_owned(msg.into())
+						);
+					}
 					Message::Pong(_) => {}
-					Message::Close(_) => {}
+					Message::Close(frame) => {
+						log!(
+							Severity::Info,
+							LOG_TAG,
+							"WebSocket Closed. Close Info: {frame:?}"
+						);
+					}
 				}
 			}
 		});
@@ -131,21 +161,26 @@ impl WebsocketReplicationNode {
 		loop {
 			match recv.recv().await {
 				Ok(data) => {
-					println!("Send Bootstrap msg {data}");
+					log!(Severity::Debug, LOG_TAG, "WebSocket: Send Bootstrap msg {data}");
 					if let Err(e) = tx.send(Message::Text(data)).await {
-						println!(
-							"Replication to WebSocket encountered an error: {e}"
+						log!(
+							Severity::Error,
+							LOG_TAG,
+							"WebSocket: Stopping Bootstrap: WebSocket error: {e}"
 						);
-						println!("Stopping Bootstrap.");
 						break;
 					};
 				}
 				Err(RecvError::Closed) => {
-					println!("Bootstrap closed. Bootstrap finished.");
+					log!(
+						Severity::Info,
+						LOG_TAG,
+						"WebSocket: Bootstrap Finished. Bootstrap Closed. "
+					);
 					break;
 				}
 				Err(RecvError::Lagged(n)) => {
-					println!("Bootstrap lagged {n}!");
+					log!(Severity::Warning, LOG_TAG, "WebSocket: Bootstrap Lagged by {n}");
 					continue;
 				}
 			}
