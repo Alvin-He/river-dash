@@ -5,7 +5,10 @@
 	3. sqlx lets us interface with our database file
 */
 
-use std::sync::Arc;
+use std::{
+	sync::Arc,
+	time::{SystemTime, UNIX_EPOCH},
+};
 
 use axum::{
 	Json, Router,
@@ -15,8 +18,11 @@ use axum::{
 	routing::{any, get, post},
 };
 
-use nile_common::{comms::stream::{client::StreamClient, raw::StreamEvent}, log::Severity};
 use nile_common::log;
+use nile_common::{
+	comms::stream::{client::StreamClient, raw::StreamEvent},
+	log::Severity,
+};
 
 use sqlx::SqlitePool;
 use tokio::task;
@@ -38,42 +44,48 @@ pub const BACKEND_DEFAULT_ADDR: &'static str = "0.0.0.0:9090";
 /// default number of slots per channel
 pub const BROADCAST_CHANNEL_SIZE: usize = 1028;
 
-
 // Log setup as seen in nile_common::log
 pub const LOG_TAG: &'static str = "Backend";
-static FILE_TARGET: log::FileTarget<&str> = log::FileTarget::new(|| "tmp/log.log");
+static FILE_TARGET: log::FileTarget<String> = log::FileTarget::new(|| {
+	let now: std::time::Duration = SystemTime::now()
+		.duration_since(UNIX_EPOCH)
+		.expect("Time to be greater than UNIX_EPOCH.");
+	format!("log/log_{}.log", now.as_secs())
+});
 
 static TERM_TARGET: log::TargetFilter<log::TerminalTarget> =
-    log::TargetFilter::new(log::Severity::Info, log::TerminalTarget);
+	log::TargetFilter::new(log::Severity::Info, log::TerminalTarget);
 
 static TARGET: log::CompoundTarget<'_> = log::compile(
-    &FILE_TARGET as &dyn log::Target,
-    &TERM_TARGET as &dyn log::Target,
+	&FILE_TARGET as &dyn log::Target,
+	&TERM_TARGET as &dyn log::Target,
 );
-
 
 /// Connects to database and opens port for frontend connection
 #[tokio::main]
 async fn main() {
-
 	// TODO: Find permanent space where logs will live
-	if let Err(e) = std::fs::create_dir_all("tmp") {
-        eprintln!("Failed to create tmp directory: {e}");
-        std::process::exit(1);
-    }
+	if let Err(e) = std::fs::create_dir_all("log") {
+		eprintln!("Failed to create log directory: {e}");
+		std::process::exit(1);
+	}
 
-    // Set up logging, other operations will be able to see
-    log::set_global_target(&TARGET);
-    nile_common::info!(LOG_TAG, "Backend starting");
+	// Set up logging, other operations will be able to see
+	log::set_global_target(&TARGET);
+	nile_common::info!(LOG_TAG, "Backend starting");
 
-    let pool = match sql::connect().await {
-        Ok(pool) => pool,
-        Err(e) => {
-            nile_common::critical!(LOG_TAG, "Database connection failed: {}", e);
-            std::process::exit(1);
-        }
-    };
-    nile_common::info!(LOG_TAG, "Database connected");
+	let pool = match sql::connect().await {
+		Ok(pool) => pool,
+		Err(e) => {
+			nile_common::critical!(
+				LOG_TAG,
+				"Database connection failed: {}",
+				e
+			);
+			std::process::exit(1);
+		}
+	};
+	nile_common::info!(LOG_TAG, "Database connected");
 
 	let replication_server = stream::replication::ReplicationServer::new();
 	let topic_register = topics::TopicRegistry::new(&replication_server);
@@ -131,8 +143,14 @@ async fn main() {
 		.with_state(database);
 
 	// Listen for a client
-	let listener = tokio::net::TcpListener::bind(BACKEND_DEFAULT_ADDR).await.unwrap();
-	log!(Severity::Info, LOG_TAG, "Listening on http://{BACKEND_DEFAULT_ADDR}");
+	let listener = tokio::net::TcpListener::bind(BACKEND_DEFAULT_ADDR)
+		.await
+		.unwrap();
+	log!(
+		Severity::Info,
+		LOG_TAG,
+		"Listening on http://{BACKEND_DEFAULT_ADDR}"
+	);
 
 	/// Serve AND see client's address
 	axum::serve(
