@@ -26,10 +26,10 @@ use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
 use axum::http::{HeaderValue, Method, header};
 
-mod intake;
+//mod intake;
 mod sql;
-mod stream;
-mod topics;
+//mod stream;
+//mod topics;
 
 // Log setup as seen in nile_common::log
 const TAG: &str = "Backend";

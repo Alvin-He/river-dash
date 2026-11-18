@@ -132,6 +132,7 @@ dependencies = [
  "axum-extra",
  "base64",
  "dotenvy",
+ "http-body-util",
  "nile-common",
  "serde",
  "serde_json",
@@ -140,6 +141,7 @@ dependencies = [
  "tempfile",
  "time",
  "tokio",
+ "tower",
  "tower-http",
 ]
 
