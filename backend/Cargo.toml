@@ -19,4 +19,6 @@ sha2 = "0.10"
 base64 = "0.22"
 time = "0.3"
 axum-extra = { version = "0.10", features = ["cookie"] }
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
 tower-http = { version = "0.6", features = ["cors"] }
