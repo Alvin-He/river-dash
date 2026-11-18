@@ -5,7 +5,10 @@ use futures_util::{
 	SinkExt, StreamExt,
 	stream::{SplitSink, SplitStream},
 };
-use tokio::sync::{Mutex, Notify, broadcast};
+use tokio::sync::{
+	Mutex, Notify,
+	broadcast::{self, error::RecvError},
+};
 
 pub type JSONMsg = Utf8Bytes;
 
@@ -13,8 +16,7 @@ pub type JSONMsg = Utf8Bytes;
 pub struct ReplicationServer {
 	channel: broadcast::Sender<JSONMsg>,
 	// subscribe to this channel to receive bootstrap information
-	bootstrap: broadcast::Sender<JSONMsg>,
-	bootstrap_notif: Arc<Notify>,
+	bootstrap: broadcast::Sender<broadcast::Sender<JSONMsg>>,
 }
 
 impl ReplicationServer {
@@ -22,7 +24,6 @@ impl ReplicationServer {
 		Self {
 			channel: broadcast::Sender::new(128),
 			bootstrap: broadcast::Sender::new(128),
-			bootstrap_notif: Notify::const_new().into(),
 		}
 	}
 
@@ -35,16 +36,18 @@ impl ReplicationServer {
 	}
 
 	pub fn request_bootstrap(&self) -> broadcast::Receiver<JSONMsg> {
-		let recv = self.bootstrap.subscribe();
-		self.bootstrap_notif.notify_waiters();
-		recv
+		println!("Request Bootstrap");
+		let (sender, receiver) = broadcast::channel(128);
+		_ = self.bootstrap.send(sender);
+		receiver
 	}
 
-	/// Wait for a bootstrap request. The sender must be dropped in order to signal that
-	/// all bootstrap init nodes have finished
-	pub async fn await_bootstrap_req(&self) -> broadcast::WeakSender<JSONMsg> {
-		self.bootstrap_notif.notified().await;
-		self.bootstrap.downgrade()
+	/// Watch the bootstrap channel. All Senders received from boot strap must be dropped in
+	/// order to signal that bootstrap have been finished.
+	pub fn watch_bootstrap(
+		&self,
+	) -> broadcast::Receiver<broadcast::Sender<JSONMsg>> {
+		self.bootstrap.subscribe()
 	}
 }
 
@@ -74,18 +77,28 @@ impl ReplicationNode for WebsocketReplicationNode {
 
 		// incoming -> self outgoing
 		tokio::spawn(async move {
-			Self::bootstrap(server, &mut tx).await;
-
-			while let Ok(data) = rep_rx.recv().await {
-				if let Err(e) = tx.send(Message::Text(data)).await {
-					println!(
-						"Replication to WebSocket encountered an error: {e}"
-					);
-					println!("Stopping Replication.");
-					break;
-				};
+			Self::bootstrap(&server, &mut tx).await;
+			loop {
+				match rep_rx.recv().await {
+					Ok(data) => {
+						if let Err(e) = tx.send(Message::Text(data)).await {
+							println!(
+								"Replication to WebSocket encountered an error: {e}"
+							);
+							println!("Stopping Replication.");
+							break;
+						};
+					}
+					Err(RecvError::Closed) => {
+						println!("WebSocket closed, stopping replication out.");
+						break;
+					}
+					Err(RecvError::Lagged(n)) => {
+						println!("WebSocket Replication lagged {n}");
+						continue;
+					}
+				}
 			}
-
 			// clean up
 			_ = tx.close().await;
 		});
@@ -111,18 +124,31 @@ impl ReplicationNode for WebsocketReplicationNode {
 
 impl WebsocketReplicationNode {
 	async fn bootstrap(
-		server: ReplicationServer,
+		server: &ReplicationServer,
 		tx: &mut SplitSink<WebSocket, Message>,
 	) {
 		let mut recv = server.request_bootstrap();
-		while recv.sender_weak_count() > 0
-			&& let Ok(data) = recv.recv().await
-		{
-			if let Err(e) = tx.send(Message::Text(data)).await {
-				println!("Replication to WebSocket encountered an error: {e}");
-				println!("Stopping Replication.");
-				break;
-			};
+		loop {
+			match recv.recv().await {
+				Ok(data) => {
+					println!("Send Bootstrap msg {data}");
+					if let Err(e) = tx.send(Message::Text(data)).await {
+						println!(
+							"Replication to WebSocket encountered an error: {e}"
+						);
+						println!("Stopping Bootstrap.");
+						break;
+					};
+				}
+				Err(RecvError::Closed) => {
+					println!("Bootstrap closed. Bootstrap finished.");
+					break;
+				}
+				Err(RecvError::Lagged(n)) => {
+					println!("Bootstrap lagged {n}!");
+					continue;
+				}
+			}
 		}
 	}
 }

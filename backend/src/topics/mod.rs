@@ -5,7 +5,10 @@ use std::{
 	sync::Arc,
 	time::SystemTime,
 };
-use tokio::sync::{Mutex, broadcast};
+use tokio::sync::{
+	Mutex,
+	broadcast::{self, error::RecvError},
+};
 
 use crate::stream::{
 	replication::{JSONMsg, ReplicationServer},
@@ -553,7 +556,7 @@ impl Topic {
 			mode,
 			def: definition,
 			peer_mode: None,
-			stream: broadcast::Sender::new(16),
+			stream: broadcast::Sender::new(128),
 		}
 	}
 
@@ -579,12 +582,23 @@ impl Topic {
 		let name = self.name.clone();
 
 		tokio::spawn(async move {
-			while let Ok(u) = rx.recv().await {
-				let json = u.network_serialize_update_msg(&name);
-				match json {
-					Ok(bytes) => _ = tx.send(bytes),
-					Err(e) => {
-						println!("Unable to serialize update: {e}");
+			loop {
+				match rx.recv().await {
+					Ok(u) => {
+						let json = u.network_serialize_update_msg(&name);
+						match json {
+							Ok(bytes) => _ = tx.send(bytes),
+							Err(e) => {
+								println!("Unable to serialize update: {e}");
+							}
+						}
+					}
+					Err(RecvError::Closed) => {
+						println!("Topic self stream close.");
+						break;
+					}
+					Err(RecvError::Lagged(n)) => {
+						println!("Topic self stream lagged {n}");
 					}
 				}
 			}
@@ -644,6 +658,51 @@ pub struct TopicRegistryData {
 	rc_server: ReplicationServer,
 	tx: broadcast::Sender<JSONMsg>,
 }
+
+impl TopicRegistryData {
+	pub fn init_local_topic(&mut self, topic: Topic) -> &mut Self {
+		self.local_topics
+			.insert(topic.get_name().into(), topic.into());
+		self
+	}
+
+	pub fn init_network_topic(
+		&mut self,
+		mut topic: Topic,
+		peer_mode: TopicOpenMode,
+	) -> &mut Self {
+		// Declear topic otn
+		self.send_topic_declare(&mut topic, peer_mode);
+
+		// Replicate topic otn
+		topic.replicate_network(&self.rc_server);
+		self.network_topics
+			.insert(topic.get_name().into(), topic.into());
+
+		self
+	}
+
+	pub fn get_topic(&self, name: impl AsRef<str>) -> Option<Arc<Topic>> {
+		self.network_topics
+			.get(name.as_ref())
+			.or_else(|| self.local_topics.get(name.as_ref()))
+			.map(|v| v.clone())
+	}
+
+	fn send_topic_declare(&self, topic: &mut Topic, peer_mode: TopicOpenMode) {
+		topic.peer_mode = Some(peer_mode);
+		let msg = match topic.network_serialize_declare_msg() {
+			Ok(v) => v,
+			Err(e) => {
+				println!("Unable to serialize declare: {e}");
+				return;
+			}
+		};
+
+		_ = self.tx.send(msg);
+	}
+}
+
 #[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct TopicRegistry(Arc<Mutex<TopicRegistryData>>);
@@ -668,103 +727,77 @@ impl TopicRegistry {
 		this
 	}
 
-	pub fn init_local_topic(&mut self, topic: Topic) -> &mut Self {
-		self.blocking_lock()
-			.local_topics
-			.insert(topic.get_name().into(), topic.into());
-		self
-	}
-
-	pub fn init_network_topic(
-		&mut self,
-		mut topic: Topic,
-		peer_mode: TopicOpenMode,
-	) -> &mut Self {
-		// Declear topic otn
-		self.send_topic_declare(&mut topic, peer_mode);
-
-		{
-			let mut lock = self.blocking_lock();
-
-			// Replicate topic otn
-			topic.replicate_network(&lock.rc_server);
-			lock.network_topics
-				.insert(topic.get_name().into(), topic.into());
-		}
-
-		self
-	}
-
-	pub fn get_topic(&self, name: impl AsRef<str>) -> Option<Arc<Topic>> {
-		let lock = self.blocking_lock();
-		lock.network_topics
-			.get(name.as_ref())
-			.or_else(|| lock.local_topics.get(name.as_ref()))
-			.map(|v| v.clone())
-	}
-
-	fn send_topic_declare(&self, topic: &mut Topic, peer_mode: TopicOpenMode) {
-		topic.peer_mode = Some(peer_mode);
-		let msg = match topic.network_serialize_declare_msg() {
-			Ok(v) => v,
-			Err(e) => {
-				println!("Unable to serialize declare: {e}");
-				return;
-			}
-		};
-
-		_ = self.blocking_lock().tx.send(msg);
-	}
-
 	fn replicate_rx(&self) {
-		let mut rx = { self.blocking_lock().rc_server.subscribe_incoming() };
 		let this = self.clone();
 		tokio::spawn(async move {
-			while let Ok(msg) = rx.recv().await {
-				let deserialized =
-					match serde_json::from_str::<NetworkStreamMessageS>(&msg) {
-						Ok(m) => m,
-						Err(e) => {
-							println!("Unable to deserialize message! {e}");
-							continue;
-						}
-					};
+			let mut rx = { this.lock().await.rc_server.subscribe_incoming() };
 
-				match deserialized.message_type {
-					NetworkStreamMessageType::Update => {
-						let topic = {
-							let lock = this.lock().await;
-							if let Some(t) =
-								lock.network_topics.get(deserialized.name)
-							{
-								t.clone()
-							} else {
-								continue;
-							}
-						};
-
-						if let Err(e) =
-							topic.network_deserialize_update(deserialized.data)
+			loop {
+				match rx.recv().await {
+					Ok(msg) => {
+						let deserialized = match serde_json::from_str::<
+							NetworkStreamMessageS,
+						>(&msg)
 						{
-							println!("Unable to deserialize update! {e}");
-							continue;
-						};
-					}
-					NetworkStreamMessageType::Declare => {
-						let dec = match Topic::network_deserialize_declare(
-							deserialized.data,
-						) {
-							Ok(t) => Arc::new(t),
+							Ok(m) => m,
 							Err(e) => {
-								println!("Unable to deserialize declare! {e}");
+								println!("Unable to deserialize message! {e}");
 								continue;
 							}
 						};
 
-						this.lock()
-							.await
-							.network_topics
-							.insert(deserialized.name.to_owned(), dec);
+						match deserialized.message_type {
+							NetworkStreamMessageType::Update => {
+								let topic = {
+									let lock = this.lock().await;
+									if let Some(t) = lock
+										.network_topics
+										.get(deserialized.name)
+									{
+										t.clone()
+									} else {
+										continue;
+									}
+								};
+
+								if let Err(e) = topic
+									.network_deserialize_update(
+										deserialized.data,
+									) {
+									println!(
+										"Unable to deserialize update! {e}"
+									);
+									continue;
+								};
+							}
+							NetworkStreamMessageType::Declare => {
+								let dec =
+									match Topic::network_deserialize_declare(
+										deserialized.data,
+									) {
+										Ok(t) => Arc::new(t),
+										Err(e) => {
+											println!(
+												"Unable to deserialize declare! {e}"
+											);
+											continue;
+										}
+									};
+
+								this.lock()
+									.await
+									.network_topics
+									.insert(deserialized.name.to_owned(), dec);
+							}
+						}
+					}
+					Err(RecvError::Closed) => {
+						println!("TR Replicate rx closed.");
+						break;
+					}
+					Err(RecvError::Lagged(n)) => {
+						// println!("TR Replicate lagged {n}");
+						continue;
 					}
 				}
 			}
@@ -774,13 +807,20 @@ impl TopicRegistry {
 	fn watch_bootstrap(&self) {
 		let this = self.clone();
 		tokio::spawn(async move {
-			let rc_server = { this.lock().await.rc_server.clone() };
+			let mut bootstrap =
+				{ this.lock().await.rc_server.watch_bootstrap() };
+				
 			loop {
-				let tx_weak = rc_server.await_bootstrap_req().await;
-				let tx = if let Some(t) = tx_weak.upgrade() {
-					t
-				} else {
-					return;
+				let tx = match bootstrap.recv().await {
+					Ok(v) => v,
+					Err(RecvError::Closed) => {
+						println!("Bootstrap watcher closed.");
+						return;
+					}
+					Err(RecvError::Lagged(n)) => {
+						println!("Bootstrap watcher lagged {n}!");
+						continue;
+					}
 				};
 
 				let lock = this.lock().await;
@@ -795,6 +835,8 @@ impl TopicRegistry {
 							);
 						}
 					});
+
+				println!("Sent Bootstrap");
 			}
 		});
 	}

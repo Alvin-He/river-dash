@@ -224,7 +224,7 @@ export class GlobalDataTable<T extends Transport> extends EventTarget {
 			} else {
 				const topic = this.m_topic_registry.get(msg.name);
 				if (topic == undefined) {
-					console.warn("WARN: Unknown/Undeclared topic received!");
+					console.warn(`WARN: Unknown/Undeclared topic received! ${msg.name}`);
 					return;
 				}
 
@@ -472,6 +472,7 @@ export class GlobalDataTable<T extends Transport> extends EventTarget {
 
 	// called when adding a new topic to the registry
 	private declare_new_topic(entry: TopicRegistered) {
+		console.log(`Declared Topic ${entry.info.name}`);
 		this.m_topic_infos.set(entry.info.name, entry.info);
 		this.m_topic_registry.set(entry.info.name, entry);
 
@@ -619,6 +620,6 @@ export class EventTopicInitialized extends Event {
 export const GDT: GlobalDataTable<TransportWebsocket> =
 	new GlobalDataTable<TransportWebsocket>(
 		new NetworkTopicStream(
-			new TransportWebsocket(new URL("ws://127.0.0.1:9090/api/ws")),
+			new TransportWebsocket(new URL("ws://127.0.0.1:9090/stream/ws")),
 		),
 	);

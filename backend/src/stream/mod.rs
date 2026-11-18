@@ -37,6 +37,7 @@ impl StreamProcessor {
 				println!("Failed to upgrade: {e}");
 			})
 			.on_upgrade(async move |w| {
+				println!("Got WS Connection");
 				WebsocketReplicationNode::new(w).replicate_to(&rc_server)
 			})
 	}

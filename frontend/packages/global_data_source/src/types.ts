@@ -90,6 +90,8 @@ export function network_deserialize_any_declare(
 			return ADT.network_deserialize_declare(data);
 		case DataTypes.Group:
 			return Group.network_deserialize_declare(data);
+		case DataTypes.Record:
+			return Record.network_deserialize_declare(data);
 		default:
 			return err(`PARSE: Unknown type: ${type}\n`);
 	}

@@ -73,9 +73,9 @@ export class TransportWebsocket implements Transport {
 
 	declare private m_endpoint: URL;
 	declare private m_socket: WebSocket;
-	declare private m_data_queue: Blob[];
+	declare private m_data_queue: string[];
 	declare private m_awaiting_receive: [
-		(queue: Blob[]) => Promise<void>,
+		(queue: string[]) => void,
 		(reason: string) => void,
 	][];
 
@@ -87,7 +87,6 @@ export class TransportWebsocket implements Transport {
 
 	public connect() {
 		this.m_socket = new WebSocket(this.m_endpoint, TransportWebsocket.PROTOS);
-		this.m_socket.binaryType = "blob";
 		this.m_awaiting_receive = [];
 		this.m_data_queue = [];
 
@@ -112,7 +111,7 @@ export class TransportWebsocket implements Transport {
 		};
 
 		this.m_socket.onmessage = (ev) => {
-			this.m_data_queue.push(ev.data as Blob);
+			this.m_data_queue.push(ev.data as string);
 
 			void this.m_awaiting_receive.shift()?.[0](this.m_data_queue);
 			this.m_data_queue = [];
@@ -133,14 +132,7 @@ export class TransportWebsocket implements Transport {
 	public receive_data(): Promise<Result<string[], string>> {
 		return new Promise((resolve) => {
 			this.m_awaiting_receive.push([
-				async (queue) => {
-					const parsed_data: string[] = [];
-					for (const i of queue) {
-						parsed_data.push(await i.text());
-					}
-
-					resolve(ok(parsed_data));
-				},
+				(queue) => resolve(ok(queue)),
 				(r) => resolve(err(r)),
 			]);
 		});
@@ -223,7 +215,6 @@ export class NetworkTopicStream<T extends Transport> {
 		const abort_controller = this.m_receiving;
 		let msgs: string[] = [];
 		while (!abort_controller.signal.aborted) {
-			console.log("Receive task run");
 			for (const msg of msgs) {
 				let deserialized: unknown;
 				try {

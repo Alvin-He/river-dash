@@ -16,7 +16,7 @@ use nile_common::{
 	log::Message,
 	time::MonoTime,
 };
-use tokio::sync::broadcast;
+use tokio::{sync::broadcast, task::spawn_blocking};
 
 use crate::{
 	stream::schema::TopicOpenMode,
@@ -27,7 +27,7 @@ pub const NILE_MESSAGES_TOPIC: &'static str = "nile_messages";
 
 pub struct NileClient {
 	client: StreamClient,
-	topic_register: Arc<Mutex<TopicRegistry>>,
+	topic_register: TopicRegistry,
 	map_value_sender: HashMap<DecHandle, broadcast::Sender<TopicUpdate>>,
 	msg_sender: broadcast::Sender<TopicUpdate>,
 }
@@ -36,39 +36,43 @@ impl NileClient {
 	/// Creates a new [`NileClient`].
 	pub fn new(
 		client: StreamClient,
-		topic_register: Arc<Mutex<TopicRegistry>>,
+		topic_register: TopicRegistry,
 	) -> NileClient {
-		let sender: broadcast::Sender<TopicUpdate>;
-
 		// Topic Register is held here
-		{
-			let mut register = topic_register
-				.lock()
-				.expect("Topic Registered Poisoned. Program Unrecoverable.");
+		tokio::task::block_in_place(|| {
+			let sender: broadcast::Sender<TopicUpdate>;
 
-			sender = if let Some(t) = register.get_topic(NILE_MESSAGES_TOPIC) {
-				t.publish()
-			} else {
-				let t = Topic::new(
-					NILE_MESSAGES_TOPIC.to_owned(),
-					TopicOpenMode::ReadWriteMany,
-					DefTypes::Message,
-				);
-				let p = t.publish();
-				register.init_network_topic(t, TopicOpenMode::ReadWriteMany);
-				p
-			};
-		}
+			// Topic register is held here
+			{
+				let mut register = topic_register.blocking_lock();
 
-		NileClient {
-			client,
-			topic_register,
-			map_value_sender: HashMap::new(),
-			msg_sender: sender,
-		}
+				sender = if let Some(t) =
+					register.get_topic(NILE_MESSAGES_TOPIC)
+				{
+					t.publish()
+				} else {
+					let t = Topic::new(
+						NILE_MESSAGES_TOPIC.to_owned(),
+						TopicOpenMode::ReadWriteMany,
+						DefTypes::Message,
+					);
+					let p = t.publish();
+					register
+						.init_network_topic(t, TopicOpenMode::ReadWriteMany);
+					p
+				};
+			}
+
+			NileClient {
+				client,
+				topic_register,
+				map_value_sender: HashMap::new(),
+				msg_sender: sender,
+			}
+		})
 	}
 
-	fn receive(&mut self) {
+	async fn receive(&mut self) {
 		match self.client.next_event() {
 			Ok(Some(StreamEvent::MessageLogged(msg))) => {
 				// pass message to nile logger?
@@ -90,7 +94,7 @@ impl NileClient {
 				);
 
 				// update topic
-				self.msg_sender.send(TopicUpdate::new(
+				_ = self.msg_sender.send(TopicUpdate::new(
 					ImplTypes::Message(line),
 					UNIX_EPOCH + Duration::from_micros(msg.timestamp.micros()),
 				));
@@ -119,11 +123,11 @@ impl NileClient {
 				{
 					self.topic_register
 						.lock()
-						.expect(
-							"Topic Register Mutex poisoned. Program Unrecoverable.",
-						)
+						.await
 						.init_network_topic(topic, TopicOpenMode::Read);
 				}
+
+				println!("Topic Inited");
 			}
 			Ok(Some(StreamEvent::ValueUndeclared(_d))) => {
 				// we do not handle this at all. Alvin confirmed okay behavior with Evan
@@ -151,29 +155,33 @@ impl NileClient {
 	}
 
 	/// Run a tokio green processing thread
-	pub async fn run_green_thread(mut self) {
-		loop {
-			self.receive();
-			// give the rest of the tasks a chance to run
-			tokio::task::yield_now().await;
-		}
+	pub fn run_green_thread(mut self) {
+		tokio::task::spawn(async move {
+			loop {
+				self.receive().await;
+			}
+		});
 	}
 
 	/// Run a full system native processing thread
 	pub fn run_full_thread(mut self) {
-		let mut lut = time::Instant::now();
-		loop {
-			self.receive();
+		let handle = tokio::runtime::Handle::current();
 
-			// ensure time between loop runs is with in THREAD_DEDICATED_MIN_LOOP_DELTA
-			// to reduce unnecessary CPU usage
-			let now = time::Instant::now();
-			let delta = now - lut;
-			if delta < THREAD_DEDICATED_MIN_LOOP_DELTA {
-				std::thread::sleep(THREAD_DEDICATED_MIN_LOOP_DELTA - delta);
+		tokio::task::spawn_blocking(move || {
+			// let mut lut = time::Instant::now();
+			loop {
+				handle.block_on(self.receive());
+
+				// ensure time between loop runs is with in THREAD_DEDICATED_MIN_LOOP_DELTA
+				// to reduce unnecessary CPU usage
+				// let now = time::Instant::now();
+				// let delta = now - lut;
+				// if delta < THREAD_DEDICATED_MIN_LOOP_DELTA {
+				// 	std::thread::sleep(THREAD_DEDICATED_MIN_LOOP_DELTA - delta);
+				// }
+				// lut = now;
 			}
-			lut = now;
-		}
+		});
 	}
 
 	/// convert a nile common value to ImplTypes

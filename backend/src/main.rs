@@ -37,16 +37,16 @@ async fn main() {
 	let pool = sql::connect().await.expect("database connection failed");
 
 	let replication_server = stream::replication::ReplicationServer::new();
-	let topic_register = Arc::new(std::sync::Mutex::new(topics::TopicRegistry::new(&replication_server)));
+	let topic_register = topics::TopicRegistry::new(&replication_server);
 
 	let nile_stand = intake::nile_stand::NileClient::new(
 		nile_common::comms::stream::client::StreamClient::connect(
-			"127.0.0.1:9090",
+			"127.0.0.1:8369",
 		)
-		.expect("To be able to connect to nile"),
-		topic_register.clone()
+		.expect("Unable to connect to nile"),
+		topic_register.clone(),
 	);
-	tokio::task::spawn(nile_stand.run_green_thread());
+	nile_stand.run_full_thread();
 
 	let database = sql::Database::new(pool);
 	database.spawn_session_cleanup();
@@ -92,8 +92,8 @@ async fn main() {
 		.with_state(database);
 
 	// Listen for a client
-	let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-	println!("Listening on http://localhost:3000");
+	let listener = tokio::net::TcpListener::bind("0.0.0.0:9090").await.unwrap();
+	println!("Listening on http://127.0.0.1:9090");
 
 	/// Serve AND see client's address
 	axum::serve(
