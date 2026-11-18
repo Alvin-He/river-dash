@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { uiController, standSimulator, operatorEvents } from "./controller/demoController";
+import {
+	uiController,
+	standSimulator,
+	operatorEvents,
+} from "./controller/demoController";
 import { useStandMode } from "./controller/useStandMode";
 import { canOpenDashboard, signOutOfMockSession } from "./auth/mockAuth";
 import { ConsoleMenu } from "./components/ConsoleHeader/ConsoleMenu";
@@ -19,6 +23,8 @@ import {
 import { LoginPage } from "./pages/LoginPage/LoginPage";
 import type { RepeatableModuleKind } from "./layout/dashboardLayout";
 import "./App.css";
+import "@river-dash/global-data-source";
+import { GDT } from "@river-dash/global-data-source";
 
 /** Existing dashboard, now available at /dashboard. */
 function DashboardPage() {
@@ -196,10 +202,14 @@ function DashboardPage() {
 
 	function handleAddModule(kind: RepeatableModuleKind): boolean {
 		try {
-			if (isLocked) throw new Error("Unlock layout editing before adding modules.");
+			if (isLocked)
+				throw new Error("Unlock layout editing before adding modules.");
 			const id = canvasRef.current?.addModule(kind);
 			if (!id) throw new Error("The dashboard isn't ready to add modules yet.");
-			setLayoutMessage({ type: "success", text: `Added ${kind === "graphs" ? "time series graph" : "telemetry overview"} panel.` });
+			setLayoutMessage({
+				type: "success",
+				text: `Added ${kind === "graphs" ? "time series graph" : "telemetry overview"} panel.`,
+			});
 			return true;
 		} catch (error) {
 			reportLayoutError(error);
@@ -209,10 +219,15 @@ function DashboardPage() {
 
 	function handleRemoveModule(id: string): boolean {
 		try {
-			if (isLocked) throw new Error("Unlock layout editing before removing modules.");
-			if (!canvasRef.current) throw new Error("The dashboard isn't ready to remove modules yet.");
+			if (isLocked)
+				throw new Error("Unlock layout editing before removing modules.");
+			if (!canvasRef.current)
+				throw new Error("The dashboard isn't ready to remove modules yet.");
 			canvasRef.current.removeModule(id);
-			setLayoutMessage({ type: "success", text: "Module removed. Use Add module to restore it." });
+			setLayoutMessage({
+				type: "success",
+				text: "Module removed. Use Add module to restore it.",
+			});
 			return true;
 		} catch (error) {
 			reportLayoutError(error);
@@ -248,7 +263,13 @@ function DashboardPage() {
 				onExportConfiguration={handleExportConfiguration}
 				onImportConfiguration={handleImportConfiguration}
 			/>
-			<DashboardCanvas isLocked={isLocked} resetSequence={resetSequence} controller={uiController} simulator={standSimulator} eventLog={operatorEvents} />
+			<DashboardCanvas
+				isLocked={isLocked}
+				resetSequence={resetSequence}
+				controller={uiController}
+				simulator={standSimulator}
+				eventLog={operatorEvents}
+			/>
 		</main>
 	);
 }
@@ -263,6 +284,8 @@ function RedirectToLogin() {
 
 function App() {
 	if (window.location.pathname === "/dashboard") {
+		console.log(GDT);
+
 		return canOpenDashboard() ? <DashboardPage /> : <RedirectToLogin />;
 	}
 
