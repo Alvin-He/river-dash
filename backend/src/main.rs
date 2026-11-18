@@ -35,7 +35,7 @@ mod topics;
 
 // Log setup as seen in nile_common::log
 const TAG: &str = "Backend";
-static FILE_TARGET: log::FileTarget<&str> = log::FileTarget::new(|| "backend.log");
+static FILE_TARGET: log::FileTarget<&str> = log::FileTarget::new(|| "tmp/log.log");
 
 static TERM_TARGET: log::TargetFilter<log::TerminalTarget> =
     log::TargetFilter::new(log::Severity::Info, log::TerminalTarget);
@@ -49,10 +49,25 @@ static TARGET: log::CompoundTarget<'_> = log::compile(
 /// Connects to database and opens port for frontend connection
 #[tokio::main]
 async fn main() {
-	// Set up logging, other operations will be able to see
-	log::set_global_target(&TARGET);
-	
-	let pool = sql::connect().await.expect("database connection failed");
+
+	// TODO: Find permanent space where logs will live
+	if let Err(e) = std::fs::create_dir_all("tmp") {
+        eprintln!("Failed to create tmp directory: {e}");
+        std::process::exit(1);
+    }
+
+    // Set up logging, other operations will be able to see
+    log::set_global_target(&TARGET);
+    nile_common::info!(TAG, "Backend starting");
+
+    let pool = match sql::connect().await {
+        Ok(pool) => pool,
+        Err(e) => {
+            nile_common::critical!(TAG, "Database connection failed: {}", e);
+            std::process::exit(1);
+        }
+    };
+    nile_common::info!(TAG, "Database connected");
 
 	let replication_server = stream::replication::ReplicationServer::new();
 	let topic_register = topics::TopicRegistry::new(&replication_server);
