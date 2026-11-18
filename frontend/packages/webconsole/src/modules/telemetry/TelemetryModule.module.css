@@ -210,3 +210,13 @@
 	color: var(--color-text-muted);
 	font: 0.64rem monospace;
 }
+
+.draggableRow {
+	cursor: grab;
+}
+.draggableRow:hover {
+	background: rgb(242 140 40 / 8%);
+}
+.draggableRow:active {
+	cursor: grabbing;
+}

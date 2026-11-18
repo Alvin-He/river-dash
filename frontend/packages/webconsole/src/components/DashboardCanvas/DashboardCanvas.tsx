@@ -24,6 +24,7 @@ import {
 } from "../../modules/time-series-graph";
 import { GRAPH_SETTINGS_KEY, type GraphSettings } from "../../modules/time-series-graph/graphSettings";
 import type { TelemetrySettings } from "../../modules/telemetry/telemetrySettings";
+import { demoGraphChannels } from "../../modules/time-series-graph/demoGraphStream";
 import styles from "./DashboardCanvas.module.css";
 
 export type ManagedModule = { id: string; kind: RepeatableModuleKind; label: string };
@@ -59,6 +60,7 @@ export const DashboardCanvas = forwardRef<DashboardCanvasHandle, DashboardCanvas
     const pendingSettings = useRef<LayoutSnapshot | null>(null);
     const [settingsApplySequence, setSettingsApplySequence] = useState(0);
     const [viewport, setViewport] = useState(DEFAULT_SURFACE);
+    const [draggedChannel, setDraggedChannel] = useState<string | null>(null);
 
     useEffect(() => {
       const element = canvasRef.current;
@@ -189,6 +191,8 @@ export const DashboardCanvas = forwardRef<DashboardCanvasHandle, DashboardCanvas
                   title={label}
                   onRemove={!isLocked ? () => removeInstance(id) : undefined}
                   isAffected={affectedModuleIds.has(id)}
+                  draggedChannel={draggedChannel}
+                  onChannelDragEnd={() => setDraggedChannel(null)}
                 />
               ) : (
                 <TelemetryModule
@@ -201,6 +205,9 @@ export const DashboardCanvas = forwardRef<DashboardCanvasHandle, DashboardCanvas
                   title={label}
                   onRemove={!isLocked ? () => removeInstance(id) : undefined}
                   isAffected={affectedModuleIds.has(id)}
+                  canGraphChannel={channel => demoGraphChannels.some(entry => entry.channel === channel)}
+                  onChannelDragStart={setDraggedChannel}
+                  onChannelDragEnd={() => setDraggedChannel(null)}
                 />
               )}
             </FloatingModule>

@@ -19,6 +19,7 @@ import {
 	type TelemetrySettings,
 } from "./telemetrySettings";
 import styles from "./TelemetryModule.module.css";
+import { TELEMETRY_CHANNEL_MIME } from "./channelDrag";
 
 export interface TelemetryReading {
 	name: string;
@@ -38,6 +39,9 @@ interface TelemetryModuleProps {
 	storageKey?: string;
 	title?: string;
 	onRemove?: () => void;
+	canGraphChannel?: (channel: string) => boolean;
+	onChannelDragStart?: (channel: string) => void;
+	onChannelDragEnd?: () => void;
 }
 
 export interface TelemetryModuleHandle {
@@ -49,12 +53,25 @@ export interface TelemetryModuleHandle {
 export const TelemetryModule = forwardRef<
 	TelemetryModuleHandle,
 	TelemetryModuleProps
->(function TelemetryModule({ readings, stream, isAffected = false, storageKey, title = "Telemetry overview", onRemove }, ref) {
+>(function TelemetryModule(
+	{
+		readings,
+		stream,
+		isAffected = false,
+		storageKey,
+		title = "Telemetry overview",
+		onRemove,
+		canGraphChannel,
+		onChannelDragStart,
+		onChannelDragEnd,
+	},
+	ref,
+) {
 	const [streamReadings, setStreamReadings] = useState<TelemetryReading[]>(
 		readings ?? defaultReadings,
 	);
-	const [settings, setSettings] = useState<TelemetrySettings>(
-		() => readTelemetrySettings(storageKey),
+	const [settings, setSettings] = useState<TelemetrySettings>(() =>
+		readTelemetrySettings(storageKey),
 	);
 	const [channelsOpen, setChannelsOpen] = useState(false);
 	const channelsId = useId();
@@ -77,7 +94,10 @@ export const TelemetryModule = forwardRef<
 		if (!stream) return;
 		return stream.subscribe(setStreamReadings);
 	}, [stream]);
-	useEffect(() => writeTelemetrySettings(settings, storageKey), [settings, storageKey]);
+	useEffect(
+		() => writeTelemetrySettings(settings, storageKey),
+		[settings, storageKey],
+	);
 	useEffect(() => {
 		if (channelsOpen) channelsPanelRef.current?.focus();
 	}, [channelsOpen]);
@@ -103,19 +123,31 @@ export const TelemetryModule = forwardRef<
 			title={title}
 			status={stream && !usesDemoReadings ? "live" : "idle"}
 			statusLabel={usesDemoReadings ? "Demo" : stream ? "Stream" : "Data"}
-			actions={<>
-				<button
-					ref={channelsButtonRef}
-					className={styles.channelsTrigger}
-					type="button"
-					aria-expanded={channelsOpen}
-					aria-controls={channelsId}
-					onClick={() => setChannelsOpen((open) => !open)}
-				>
-					{channelsOpen ? "Close" : "Channels"}
-				</button>
-				{onRemove && <button className={styles.channelsTrigger} type="button" onClick={onRemove} aria-label={`Remove ${title}`} title={`Remove ${title}`}>×</button>}
-			</>}
+			actions={
+				<>
+					<button
+						ref={channelsButtonRef}
+						className={styles.channelsTrigger}
+						type="button"
+						aria-expanded={channelsOpen}
+						aria-controls={channelsId}
+						onClick={() => setChannelsOpen((open) => !open)}
+					>
+						{channelsOpen ? "Close" : "Channels"}
+					</button>
+					{onRemove && (
+						<button
+							className={styles.channelsTrigger}
+							type="button"
+							onClick={onRemove}
+							aria-label={`Remove ${title}`}
+							title={`Remove ${title}`}
+						>
+							×
+						</button>
+					)}
+				</>
+			}
 			className={isAffected ? "affected-module" : ""}
 		>
 			<div className={styles.telemetry}>
@@ -138,7 +170,31 @@ export const TelemetryModule = forwardRef<
 					</div>
 
 					{visibleReadings.map((reading) => (
-						<div className={styles.row} role="row" key={reading.name}>
+						<div
+							className={`${styles.row} ${canGraphChannel?.(reading.name) ? styles.draggableRow : ""}`}
+							role="row"
+							key={reading.name}
+							title={
+								canGraphChannel?.(reading.name)
+									? `Drag ${reading.name} to a graph`
+									: reading.name
+							}
+							data-no-drag
+							draggable={canGraphChannel?.(reading.name) ?? false}
+							onDragStart={(event) => {
+								if (!canGraphChannel?.(reading.name)) {
+									event.preventDefault();
+									return;
+								}
+								event.dataTransfer.setData(
+									TELEMETRY_CHANNEL_MIME,
+									reading.name,
+								);
+								event.dataTransfer.effectAllowed = "copy";
+								onChannelDragStart?.(reading.name);
+							}}
+							onDragEnd={() => onChannelDragEnd?.()}
+						>
 							<span className={styles.channel} role="cell" title={reading.name}>
 								{reading.name}
 							</span>
@@ -161,7 +217,7 @@ export const TelemetryModule = forwardRef<
 
 				<p className={styles.footer}>
 					Showing {visibleReadings.length} of {sortedReadings.length} channels ·
-					Sorted by channel name
+					Drag a channel to a graph · Or select it in Graph settings
 				</p>
 
 				{channelsOpen && (

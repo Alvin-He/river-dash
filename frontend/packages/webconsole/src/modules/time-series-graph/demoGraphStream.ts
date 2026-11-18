@@ -46,7 +46,7 @@ const graphDefinitions = [
 		lineStyle: "dot",
 	},
 	{
-		channel: "chamber_temp",
+		channel: "thrust_chamber_temp",
 		unit: "°C",
 		color: "#55b96d",
 		baseline: 25,
@@ -71,6 +71,11 @@ const graphDefinitions = [
 	},
 ] as const;
 
+export const demoGraphChannels: ReadonlyArray<{
+	channel: string;
+	unit: string;
+}> = graphDefinitions.map(({ channel, unit }) => ({ channel, unit }));
+
 function createHistory(
 	baseline: number,
 	variation: number,
@@ -93,33 +98,45 @@ export function createDemoGraphSeries(now = Date.now()): GraphSeries[] {
 	}));
 }
 
-/** Temporary data source until the Rust backend forwards numeric stream values. */
+/** Shared demo feed: all modules observe the same sample timestamps and values. */
+const subscribers = new Set<(series: GraphSeries[]) => void>();
+let sharedSeries: GraphSeries[] | null = null;
+let intervalId: number | undefined;
+
 export const demoGraphStream: GraphDataStream = {
 	subscribe(onSeries) {
-		let series = createDemoGraphSeries();
-		onSeries(series);
+		subscribers.add(onSeries);
+		if (!sharedSeries) sharedSeries = createDemoGraphSeries();
+		onSeries(sharedSeries);
 
-		const intervalId = window.setInterval(() => {
-			const now = Date.now();
-			series = series.map((currentSeries, index) => {
-				const definition = graphDefinitions[index];
-				const previousValue =
-					currentSeries.points.at(-1)?.value ?? definition.baseline;
-				const drift = (Math.random() - 0.5) * definition.variation;
-				const nextValue =
-					previousValue * 0.8 + (definition.baseline + drift) * 0.2;
-
-				return {
-					...currentSeries,
-					points: [
-						...currentSeries.points.slice(1),
-						{ timestamp: now, value: nextValue },
-					],
-				};
-			});
-			onSeries(series);
-		}, SAMPLE_INTERVAL_MS);
-
-		return () => window.clearInterval(intervalId);
+		if (intervalId === undefined) {
+			intervalId = window.setInterval(() => {
+				const now = Date.now();
+				sharedSeries = (sharedSeries ?? []).map((currentSeries, index) => {
+					const definition = graphDefinitions[index];
+					const previousValue =
+						currentSeries.points.at(-1)?.value ?? definition.baseline;
+					const drift = (Math.random() - 0.5) * definition.variation;
+					const nextValue =
+						previousValue * 0.8 + (definition.baseline + drift) * 0.2;
+					return {
+						...currentSeries,
+						points: [
+							...currentSeries.points.slice(1),
+							{ timestamp: now, value: nextValue },
+						],
+					};
+				});
+				for (const listener of subscribers) listener(sharedSeries);
+			}, SAMPLE_INTERVAL_MS);
+		}
+		return () => {
+			subscribers.delete(onSeries);
+			if (subscribers.size === 0) {
+				if (intervalId !== undefined) window.clearInterval(intervalId);
+				intervalId = undefined;
+				sharedSeries = null;
+			}
+		};
 	},
 };

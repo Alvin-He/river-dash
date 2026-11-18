@@ -35,6 +35,7 @@ describe("time-series graph preference storage", () => {
 		expect(settings.channels).toEqual({
 			good: { visible: false, color: "#ff0000", lineStyle: "dash-dot" },
 		});
+		expect(settings.attachedChannels).toBeNull(); // Migration from the earlier all-visible format.
 	});
 
 	it("provides an editable hex color for CSS-variable-backed telemetry series", () => {
