@@ -9,9 +9,10 @@ All stand-controller tests are **browser-only simulations**. They do not send co
 | Unit | Vitest | `frontend/packages/webconsole/src/controller/*.unit.test.ts` and existing `*.test.ts` | Controller validation, mode/valve policy, fire timings, event-log limits, subscription isolation. |
 | System | Vitest | `frontend/packages/webconsole/src/controller/UIController.system.test.ts` plus existing controller integration tests | `TopicUIController` + `MockTopicStore` + `MockStand` + event log request/response/report behavior. |
 | UI | Playwright (Chromium) | `frontend/packages/webconsole/e2e/controller.spec.ts` | The visible mode/valve panel with a real browser, operator clicks, mock rejection, reported status, and Fire form validation. |
+| Backend | Rust Test | `backend` | Unit tests on backend SQL and Auth. |
 | Other package | Vitest | `frontend/packages/global_data_source/src/tests/` | Existing global data source tests. |
 
-## Setup and commands
+## Frontend Setup and commands
 
 Use Node.js compatible with Vite 8 (Node 22.12+ or a later supported version) and npm. From the project root:
 
@@ -31,6 +32,16 @@ npm run test -w @river-dash/global-data-source
 ```
 
 Playwright starts a local Vite development server automatically on `127.0.0.1:4173` for the UI fixture at `/controller-test.html`. The port must be free. Its browser installation can need additional system libraries (e.g. `npx playwright install --with-deps chromium` on Linux). CI and a fresh checkout must run `npm install`; do not reuse `node_modules` copied from another OS. No `.env`, database, seed account, live telemetry source, backend server, or networked test stand is required.
+
+## Backend Setup and commands
+From project root:
+
+```sh
+cd backend
+cargo test
+```
+
+This runs all tests on the backend. Including tests on SQL, Auth, and others systems.
 
 ## TDD: Keep reported valve snapshots separate from consumers
 
