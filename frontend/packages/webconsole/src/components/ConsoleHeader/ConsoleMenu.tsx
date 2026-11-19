@@ -184,7 +184,6 @@ export function ConsoleMenu({
 					<div className={styles.panelHeading}>
 						<div>
 							<strong>NILE CONSOLE</strong>
-							<span className={styles.subheading}>TS-01 / SOUTH PAD</span>
 						</div>
 						<kbd>Shift+M</kbd>
 					</div>

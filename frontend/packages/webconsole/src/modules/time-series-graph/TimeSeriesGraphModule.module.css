@@ -194,15 +194,6 @@
 	white-space: nowrap;
 }
 
-.hint {
-	padding-top: 4px;
-	color: var(--color-text-muted);
-	font: 0.51rem monospace;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
 .settingsPanel {
 	position: absolute;
 	z-index: 8;
@@ -345,15 +336,6 @@
 	.legend {
 		grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
 	}
-	.hint {
-		display: none;
-	}
-}
-
-.helperText {
-	margin: 0;
-	color: var(--color-text-muted);
-	font-size: 0.61rem;
 }
 
 /* Drop feedback is limited to eligible channels; operational status colors stay reserved. */

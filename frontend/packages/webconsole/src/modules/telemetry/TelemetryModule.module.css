@@ -6,26 +6,6 @@
 	min-height: 0;
 }
 
-.summary {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	width: 100%;
-	min-height: 26px;
-	margin-bottom: 8px;
-	padding: 0 7px;
-	background: var(--color-sidebar);
-	border: 1px solid var(--color-border);
-	color: var(--color-text-muted);
-	font: 0.58rem monospace;
-	letter-spacing: 0.03em;
-}
-
-.summary strong {
-	color: var(--color-text-secondary);
-	font: inherit;
-}
-
 .table {
 	display: block;
 	flex: 1 1 0;
@@ -81,17 +61,6 @@
 
 .value {
 	color: var(--color-text-primary);
-}
-
-.footer {
-	flex: 0 0 auto;
-	margin: 8px 0 0;
-	overflow: hidden;
-	color: var(--color-text-muted);
-	font: 0.56rem monospace;
-	letter-spacing: 0.03em;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 /* The channel chooser overlays the table, not the dashboard geometry. */

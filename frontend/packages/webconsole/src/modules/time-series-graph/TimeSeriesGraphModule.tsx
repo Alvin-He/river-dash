@@ -373,7 +373,6 @@ export const TimeSeriesGraphModule = forwardRef<
 				<div className={styles.graphModule}>
 					<div className={styles.toolbar}>
 						<span>
-							{selectedSeries.length}/{availableSeries.length} CHANNELS ·{" "}
 							{settings.windowSeconds}s ·{" "}
 							{frozenLatest === null ? "FOLLOW" : "PAUSED"}
 						</span>
@@ -434,11 +433,6 @@ export const TimeSeriesGraphModule = forwardRef<
 							onHorizontalPan={panX}
 							onHorizontalZoom={zoomX}
 						/>
-					</div>
-					<div className={styles.hint}>
-						{selectedSeries.length === 0
-							? "Drag a telemetry channel here, or select one in Graph settings."
-							: "Scroll/drag: Y pan · Shift+scroll: time pan · Ctrl+scroll: Y zoom · Alt+scroll: time zoom"}
 					</div>
 					{settingsOpen && (
 						<aside
@@ -506,9 +500,6 @@ export const TimeSeriesGraphModule = forwardRef<
 										}
 									/>
 								</label>
-								<p className={styles.helperText}>
-									Very dense tick intervals are thinned to keep labels legible.
-								</p>
 								<div className={styles.buttonRow}>
 									<button
 										type="button"
@@ -760,7 +751,6 @@ export const TimeSeriesGraphModule = forwardRef<
 								<button type="button" onClick={resetView}>
 									Reset view
 								</button>
-								<span>Chart preferences save in this browser.</span>
 							</div>
 						</aside>
 					)}

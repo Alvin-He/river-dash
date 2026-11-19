@@ -151,13 +151,6 @@ export const TelemetryModule = forwardRef<
 			className={isAffected ? "affected-module" : ""}
 		>
 			<div className={styles.telemetry}>
-				<div className={styles.summary}>
-					<span>STAND / TELEMETRY</span>
-					<strong>
-						{visibleReadings.length} / {sortedReadings.length} CHANNELS
-					</strong>
-				</div>
-
 				<div
 					className={styles.table}
 					role="table"
@@ -215,11 +208,6 @@ export const TelemetryModule = forwardRef<
 					)}
 				</div>
 
-				<p className={styles.footer}>
-					Showing {visibleReadings.length} of {sortedReadings.length} channels ·
-					Drag a channel to a graph · Or select it in Graph settings
-				</p>
-
 				{channelsOpen && (
 					<aside
 						ref={channelsPanelRef}
@@ -248,10 +236,6 @@ export const TelemetryModule = forwardRef<
 								×
 							</button>
 						</div>
-						<p className={styles.channelsHint}>
-							Select the measurements shown in this table. Incoming data is
-							unaffected.
-						</p>
 						<div className={styles.channelsActions}>
 							<button
 								type="button"
