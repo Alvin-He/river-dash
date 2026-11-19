@@ -12,7 +12,7 @@ use sqlx::{
 
 /// Struct of a visual configuration of components
 /// These are what we expect to recieve data from
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Config {
     pub name: String,
     pub components: String
