@@ -24,7 +24,6 @@ use nile_common::{
 	log::Severity,
 };
 
-use sqlx::SqlitePool;
 use tokio::task;
 
 /// So we can let through if on localhost
@@ -34,10 +33,10 @@ use axum::http::{HeaderValue, Method, header};
 /// Cookie use
 use tower_http::cors::CorsLayer;
 
-mod intake;
 mod sql;
-mod stream;
-mod topics;
+///mod intake;
+///mod stream;
+///mod topics;
 
 /// default listen addr
 pub const BACKEND_DEFAULT_ADDR: &'static str = "0.0.0.0:9090";
@@ -61,7 +60,8 @@ static TARGET: log::CompoundTarget<'_> = log::compile(
 	&TERM_TARGET as &dyn log::Target,
 );
 
-/// Connects to database and opens port for frontend connection
+
+// Connects to database and opens port for frontend connection
 #[tokio::main]
 async fn main() {
 	// TODO: Find permanent space where logs will live
@@ -102,14 +102,15 @@ async fn main() {
 	let database = sql::Database::new(pool);
 	database.spawn_session_cleanup();
 
-	/// CORS layer
+	// CORS layer
 	let cors = CorsLayer::new()
 		.allow_origin("http://127.0.0.1:5173".parse::<HeaderValue>().unwrap()) // your frontend's exact origin
 		.allow_methods([Method::GET, Method::POST, Method::DELETE])
 		.allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
 		.allow_credentials(true);
 
-	/// Inner routes after authentication
+
+	// Inner routes after authentication
 	let protected = Router::new()
 		.route(
 			"/configs",
@@ -152,7 +153,7 @@ async fn main() {
 		"Listening on http://{BACKEND_DEFAULT_ADDR}"
 	);
 
-	/// Serve AND see client's address
+	// Serve AND see client's address
 	axum::serve(
 		listener,
 		app.into_make_service_with_connect_info::<SocketAddr>(),

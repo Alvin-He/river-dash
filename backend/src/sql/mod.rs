@@ -10,6 +10,8 @@ use axum::{
     http::StatusCode,
 };
 
+use nile_common::{error, info, warning};
+
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     SqlitePool,
@@ -18,41 +20,56 @@ use sqlx::{
 pub mod configs;
 pub mod users;
 
+const TAG: &str = "SQL";
 
- /// Connection to the app's persistent state (database)
- #[derive(Clone)]
+/// Connection to the app's persistent state (database)
+#[derive(Clone)]
 pub struct Database {
-    sql_pool : SqlitePool,    
+    sql_pool : SqlitePool,
 }
-
 
 // Initial connection to data.db
 pub async fn connect() -> Result<SqlitePool, sqlx::Error> {
-	std::fs::create_dir_all("database").ok();
+    info!(TAG, "Connecting to database at database/data.db");
 
-    let options = SqliteConnectOptions::from_str("sqlite:database/data.db")?
+    // This used to be `.ok()`, which silently swallowed I/O errors.
+    if let Err(e) = std::fs::create_dir_all("database") {
+        error!(TAG, "I/O error creating database directory: {}", e);
+    }
+
+    let options = SqliteConnectOptions::from_str("sqlite:database/data.db")
+        .map_err(|e| {
+            error!(TAG, "Invalid database connection string: {}", e);
+            e
+        })?
         .create_if_missing(true);
 
-    // Try to get calues from the configs table
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
         .connect_with(options)
-        .await?;
+        .await
+        .map_err(|e| {
+            error!(TAG, "Failed to connect to database: {}", e);
+            e
+        })?;
 
-      // Ensure we don't try to load a nonexistent table
-      sqlx::query(
-      "CREATE TABLE IF NOT EXISTS configs (
-          name TEXT PRIMARY KEY,
-          components TEXT NOT NULL
-            )",
-	)
-	.execute(&pool)
-	.await?;
+    // Ensure we don't try to load a nonexistent table
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS configs (
+            name TEXT PRIMARY KEY,
+            components TEXT NOT NULL
+        )",
+    )
+    .execute(&pool)
+    .await
+    .map_err(|e| {
+        error!(TAG, "Failed to create configs table: {}", e);
+        e
+    })?;
 
-	Ok(pool)
+    info!(TAG, "Database connected");
+    Ok(pool)
 }
-
-
 
 impl Database {
 
@@ -60,28 +77,41 @@ impl Database {
     pub fn new(sql_pool: SqlitePool) -> Self {
         Self { sql_pool }
     }
-    
+
     /// GET all Config objects from configs
     pub async fn get_configs(State(state): State<Database>) -> Result<Json<Vec<configs::Config>>, StatusCode> {
-        return configs::get_all_configs(&state.sql_pool)
+        info!(TAG, "Command received: get all configs");
+
+        configs::get_all_configs(&state.sql_pool)
             .await
-            .map(Json)
+            .map(|all| {
+                info!(TAG, "get_configs succeeded: returned {} configs", all.len());
+                Json(all)
+            })
             .map_err(|e| {
-                eprintln!("get_configs has failed: {e}");
+                error!(TAG, "get_configs failed: {}", e);
                 StatusCode::INTERNAL_SERVER_ERROR
-            });
-    }    
+            })
+    }
 
     /// GET a specific Config object from configs
     pub async fn get_config(
         State(state): State<Database>,
         Path(name): Path<String>,
-    )-> Result<Json<configs::Config>, StatusCode> {
+    ) -> Result<Json<configs::Config>, StatusCode> {
+        info!(TAG, "Command received: get config '{}'", name);
+
         match configs::get_config(&state.sql_pool, &name).await {
-            Ok(Some(config)) => Ok(Json(config)),
-            Ok(None) => Err(StatusCode::NOT_FOUND),
+            Ok(Some(config)) => {
+                info!(TAG, "get_config succeeded for '{}'", name);
+                Ok(Json(config))
+            }
+            Ok(None) => {
+                warning!(TAG, "get_config: config '{}' not found", name);
+                Err(StatusCode::NOT_FOUND)
+            }
             Err(e) => {
-                eprintln!("get_config has failed: {e}");
+                error!(TAG, "get_config failed for '{}': {}", name, e);
                 Err(StatusCode::INTERNAL_SERVER_ERROR)
             }
         }
@@ -92,11 +122,16 @@ impl Database {
         State(state): State<Database>,
         Json(config): Json<configs::Config>,
     ) -> Result<Json<configs::Config>, StatusCode> {
+        info!(TAG, "Command received: save config '{}'", config.name);
+
         configs::upsert_config(&state.sql_pool, &config)
             .await
-            .map(|_| Json(config))
+            .map(|_| {
+                info!(TAG, "post_config succeeded for '{}'", config.name);
+                Json(config.clone())
+            })
             .map_err(|e| {
-                eprintln!("post_config has failed: {e}");
+                error!(TAG, "post_config failed for '{}': {}", config.name, e);
                 StatusCode::INTERNAL_SERVER_ERROR
             })
     }
@@ -106,16 +141,23 @@ impl Database {
         State(state): State<Database>,
         Path(name): Path<String>,
     ) -> StatusCode {
+        info!(TAG, "Command received: delete config '{}'", name);
+
         match configs::delete_config(&state.sql_pool, &name).await {
-            Ok(true) => StatusCode::NO_CONTENT,
-            Ok(false) => StatusCode::NOT_FOUND,
+            Ok(true) => {
+                info!(TAG, "delete_config succeeded for '{}'", name);
+                StatusCode::NO_CONTENT
+            }
+            Ok(false) => {
+                warning!(TAG, "delete_config: config '{}' not found", name);
+                StatusCode::NOT_FOUND
+            }
             Err(e) => {
-                eprintln!("delete_config has failed: {e}");
+                error!(TAG, "delete_config failed for '{}': {}", name, e);
                 StatusCode::INTERNAL_SERVER_ERROR
             }
         }
     }
-
 }
 
 
