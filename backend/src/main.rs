@@ -34,9 +34,9 @@ use axum::http::{HeaderValue, Method, header};
 use tower_http::cors::CorsLayer;
 
 mod sql;
-///mod intake;
-///mod stream;
-///mod topics;
+mod intake;
+mod stream;
+mod topics;
 
 /// default listen addr
 pub const BACKEND_DEFAULT_ADDR: &'static str = "0.0.0.0:9090";
